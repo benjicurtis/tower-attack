@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Isometric Multiplayer World</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <div id="game-container">
+      <canvas id="game-canvas"></canvas>
+      <div id="controls-overlay">
+        <div class="control-hint">
+          <span class="key">WASD</span> Move & Climb
+          <span class="key">Q/E</span> Rotate
+          <span class="key">Space</span> Place Block
+          <span class="key">X</span> Remove Block
+          <span class="key">1-8</span> Colors
+          <span class="stomp-hint">Stomp NPCs from above for badges!</span>
+        </div>
+      </div>
+      <div id="player-info">
+        <div id="player-count">Players: 0</div>
+        <div id="position-info">Position: (0, 0)</div>
+      </div>
+    </div>
+    <div id="chat-container">
+      <div id="chat-header">
+        <h2>Chat</h2>
+        <div id="name-section">
+          <input type="text" id="name-input" placeholder="Your name..." maxlength="20">
+          <button id="name-btn">Set Name</button>
+        </div>
+      </div>
+      <div id="chat-messages"></div>
+      <div id="chat-input-container">
+        <input type="text" id="chat-input" placeholder="Type a message..." maxlength="500">
+        <button id="send-btn">Send</button>
+      </div>
+    </div>
+  </div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
