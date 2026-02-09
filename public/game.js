@@ -7,6 +7,11 @@ const CONFIG = {
   COLORS: ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F']
 };
 
+const INFECTION = {
+  COLOR: '#FF5F1F',
+  PARTICLE_RGB: { r: 255, g: 40, b: 40 }
+};
+
 // Game State
 const state = {
   socket: null,
@@ -22,8 +27,22 @@ const state = {
   lastMoveTime: 0,
   moveDelay: 150,
   notifications: [],
-  stompEffects: []
+  stompEffects: [],
+  infectionParticles: [],
+  returningToLobby: false,
+
+  // Mode
+  gameMode: 'freeplay',
+
+  // Classic stomp
+  classicStomp: null,
+
+  // King of the Hill
+  koth: null,
+  kothControl: { controllerId: null, contested: false }
 };
+
+const infectionEmitAt = new Map(); // playerId -> last emit timestamp
 
 // Canvas setup
 const canvas = document.getElementById('game-canvas');
@@ -51,6 +70,11 @@ function toWorld(screenX, screenY) {
   const x = (screenX / (CONFIG.TILE_WIDTH / 2) + screenY / (CONFIG.TILE_HEIGHT / 2)) / 2;
   const z = (screenY / (CONFIG.TILE_HEIGHT / 2) - screenX / (CONFIG.TILE_WIDTH / 2)) / 2;
   return { x: Math.floor(x), z: Math.floor(z) };
+}
+
+function getPlayerDisplayColor(player) {
+  if (!player) return '#ffffff';
+  return player.isInfected ? INFECTION.COLOR : player.color;
 }
 
 // Draw isometric block
@@ -107,6 +131,7 @@ function drawBlock(x, y, z, color, isPlayer = false, playerData = null) {
 function drawPlayerAvatar(x, y, player, elevated = false) {
   const bodyWidth = 24;
   const bodyHeight = 32;
+  const playerColor = getPlayerDisplayColor(player);
   
   // Shadow
   ctx.fillStyle = 'rgba(0,0,0,0.3)';
@@ -116,10 +141,10 @@ function drawPlayerAvatar(x, y, player, elevated = false) {
   
   // Body
   ctx.beginPath();
-  ctx.fillStyle = player.color;
+  ctx.fillStyle = playerColor;
   roundRect(ctx, x - bodyWidth/2, y, bodyWidth, bodyHeight, 8);
   ctx.fill();
-  ctx.strokeStyle = shadeColor(player.color, -40);
+  ctx.strokeStyle = shadeColor(playerColor, -40);
   ctx.lineWidth = 2;
   ctx.stroke();
   
@@ -440,6 +465,7 @@ function render() {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   
   drawGrid();
+  drawKothHill();
   
   const renderList = [];
   
@@ -494,6 +520,10 @@ function render() {
       drawNPCIndicator(obj.x, obj.y, obj.z, obj.npc);
     }
   });
+
+  // Infection particles (spawn + draw on top)
+  spawnInfectionParticles();
+  drawInfectionParticles();
   
   // Draw stomp effects
   state.stompEffects = state.stompEffects.filter(effect => drawStompEffect(effect));
@@ -507,6 +537,42 @@ function render() {
   
   // Draw notifications
   drawNotifications();
+}
+
+function drawKothHill() {
+  if (state.gameMode !== 'king-of-the-hill' || !state.koth || !state.koth.hill) return;
+  const { x, z, radius } = state.koth.hill;
+  const iso = toIso(x, 0, z);
+  const screenX = iso.x + state.camera.x + canvas.width / 2;
+  const screenY = iso.y + state.camera.y + canvas.height / 2;
+  const w = CONFIG.TILE_WIDTH / 2;
+  const h = CONFIG.TILE_HEIGHT / 2;
+
+  // Glow
+  const glow = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, 60 + radius * 10);
+  glow.addColorStop(0, 'rgba(255, 217, 61, 0.20)');
+  glow.addColorStop(1, 'rgba(255, 217, 61, 0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.ellipse(screenX, screenY + h, 70 + radius * 10, 35 + radius * 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Diamond outline
+  ctx.strokeStyle = 'rgba(255, 217, 61, 0.9)';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(screenX, screenY);
+  ctx.lineTo(screenX + w, screenY + h);
+  ctx.lineTo(screenX, screenY + h * 2);
+  ctx.lineTo(screenX - w, screenY + h);
+  ctx.closePath();
+  ctx.stroke();
+
+  // Crown
+  ctx.font = '24px Segoe UI';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(255,255,255,0.95)';
+  ctx.fillText('👑', screenX, screenY - 10);
 }
 
 function drawGrid() {
@@ -542,10 +608,11 @@ function drawPlayerIndicator(x, y, z, player) {
   const iso = toIso(x, y, z);
   const screenX = iso.x + state.camera.x + canvas.width / 2;
   const screenY = iso.y + state.camera.y + canvas.height / 2;
+  const playerColor = getPlayerDisplayColor(player);
   
   // Glow
   const gradient = ctx.createRadialGradient(screenX, screenY + 20, 0, screenX, screenY + 20, 30);
-  gradient.addColorStop(0, player.color + '40');
+  gradient.addColorStop(0, playerColor + '40');
   gradient.addColorStop(1, 'transparent');
   ctx.fillStyle = gradient;
   ctx.beginPath();
@@ -553,6 +620,87 @@ function drawPlayerIndicator(x, y, z, player) {
   ctx.fill();
   
   drawPlayerAvatar(screenX, screenY - 30, player, true);
+}
+
+function spawnInfectionParticles() {
+  // Only do work if infection is in the room
+  const anyInfected = Array.from(state.players.values()).some(p => p && p.isInfected);
+  if (!anyInfected) {
+    // Clean up stale emit timestamps occasionally
+    if (infectionEmitAt.size > 0 && Math.random() < 0.01) infectionEmitAt.clear();
+    return;
+  }
+
+  const now = Date.now();
+  const emitEveryMs = 45;
+
+  state.players.forEach((player) => {
+    if (!player || !player.isInfected) return;
+
+    const last = infectionEmitAt.get(player.id) || 0;
+    if (now - last < emitEveryMs) return;
+    infectionEmitAt.set(player.id, now);
+
+    const iso = toIso(player.x, player.y, player.z);
+    const baseX = iso.x + state.camera.x + canvas.width / 2;
+    const baseY = iso.y + state.camera.y + canvas.height / 2 - 45;
+
+    const count = 2;
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const spread = 10 + Math.random() * 10;
+      const px = baseX + Math.cos(angle) * spread;
+      const py = baseY + Math.sin(angle) * (spread * 0.6);
+
+      state.infectionParticles.push({
+        x: px,
+        y: py,
+        vx: (Math.random() - 0.5) * 0.4,
+        vy: -0.6 - Math.random() * 0.9,
+        radius: 2 + Math.random() * 3,
+        bornAt: now,
+        lifeMs: 700 + Math.random() * 500
+      });
+    }
+  });
+
+  const maxParticles = 700;
+  if (state.infectionParticles.length > maxParticles) {
+    state.infectionParticles.splice(0, state.infectionParticles.length - maxParticles);
+  }
+}
+
+function drawInfectionParticles() {
+  if (!state.infectionParticles || state.infectionParticles.length === 0) return;
+
+  const now = Date.now();
+  const next = [];
+
+  for (const p of state.infectionParticles) {
+    const age = now - p.bornAt;
+    if (age >= p.lifeMs) continue;
+
+    const t = age / p.lifeMs;
+    const alpha = Math.max(0, (1 - t) * 0.85);
+
+    // Update (simple upward drift)
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy -= 0.006; // slightly accelerate upward
+
+    const r = INFECTION.PARTICLE_RGB.r;
+    const g = INFECTION.PARTICLE_RGB.g;
+    const b = INFECTION.PARTICLE_RGB.b;
+
+    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.radius * (1 - t * 0.35), 0, Math.PI * 2);
+    ctx.fill();
+
+    next.push(p);
+  }
+
+  state.infectionParticles = next;
 }
 
 function drawNPCIndicator(x, y, z, npc) {
@@ -884,6 +1032,13 @@ document.addEventListener('keydown', (e) => {
   if (e.code === 'KeyX') {
     removeBlock();
   }
+
+  // Push (server-authoritative)
+  if (e.code === 'KeyP') {
+    if (state.socket && state.player) {
+      state.socket.emit('push');
+    }
+  }
 });
 
 document.addEventListener('keyup', (e) => {
@@ -961,6 +1116,51 @@ function updateUI() {
   if (state.player) {
     document.getElementById('position-info').textContent = `Position: (${state.player.x}, ${state.player.z}) Height: ${state.player.y}`;
   }
+
+  updateClassicStompHud();
+  updateKothHud();
+}
+
+function updateClassicStompHud() {
+  const hud = document.getElementById('classic-stomp-hud');
+  if (!hud) return;
+  if (state.gameMode !== 'classic-stomp' || !state.player || !state.classicStomp || !state.classicStomp.endsAt) {
+    hud.style.display = 'none';
+    return;
+  }
+
+  const score = Number(state.player.score || 0);
+  const msLeft = Math.max(0, state.classicStomp.endsAt - Date.now());
+  const totalSeconds = Math.ceil(msLeft / 1000);
+  const mm = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+  const ss = String(totalSeconds % 60).padStart(2, '0');
+  hud.textContent = `Score: ${score} | Time: ${mm}:${ss}`;
+  hud.style.display = 'block';
+}
+
+function updateKothHud() {
+  const hud = document.getElementById('koth-hud');
+  if (!hud) return;
+  if (state.gameMode !== 'king-of-the-hill' || !state.player || !state.koth || !state.koth.endsAt) {
+    hud.style.display = 'none';
+    return;
+  }
+
+  const score = Number(state.player.score || 0);
+  const msLeft = Math.max(0, state.koth.endsAt - Date.now());
+  const totalSeconds = Math.ceil(msLeft / 1000);
+  const mm = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+  const ss = String(totalSeconds % 60).padStart(2, '0');
+
+  let hillText = 'Open';
+  if (state.kothControl && state.kothControl.contested) hillText = 'Contested';
+  else if (state.kothControl && state.kothControl.controllerId) {
+    const controller = state.players.get(state.kothControl.controllerId);
+    hillText = controller ? controller.name : 'Held';
+  }
+
+  hud.textContent = `Score: ${score} | Time: ${mm}:${ss} | Hill: ${hillText}`;
+  hud.style.display = 'block';
 }
 
 function gameLoop() {
@@ -974,10 +1174,58 @@ function gameLoop() {
 function connect() {
   state.socket = io();
   
+  const roomId = sessionStorage.getItem('roomId');
+  const playerName = sessionStorage.getItem('playerName') || '';
+  const playerColor = sessionStorage.getItem('playerColor') || '';
+
+  // If someone hits game page directly, send them back to lobby.
+  if (!roomId) {
+    window.location.href = '/';
+    return;
+  }
+
+  // Request to initialize game with room + player info
+  state.socket.emit('initGame', { roomId, playerName, playerColor });
+
+  state.socket.on('gameError', (err) => {
+    const message = (err && err.message) ? err.message : 'Unable to join room. Returning to lobby.';
+    alert(message);
+    window.location.href = '/';
+  });
+
+  function queueReturnToLobby(payload) {
+    if (state.returningToLobby) return;
+    state.returningToLobby = true;
+
+    const message = (payload && payload.message) ? String(payload.message) : 'Match ended. Returning to lobby...';
+    const delayMs = payload && Number.isFinite(Number(payload.delayMs)) ? Number(payload.delayMs) : 2500;
+
+    // Best-effort notify without blocking the redirect.
+    try {
+      addChatMessage({ type: 'system', text: message, timestamp: Date.now() });
+    } catch {}
+
+    setTimeout(() => {
+      // Keep name/color so players don't have to re-enter, but remove room binding.
+      sessionStorage.removeItem('roomId');
+      sessionStorage.removeItem('gameMode');
+      window.location.href = '/';
+    }, Math.max(0, delayMs));
+  }
+
+  state.socket.on('returnToLobby', (payload) => {
+    // Free Build should never send this, but if it does, ignore.
+    if (state.gameMode === 'freeplay') return;
+    queueReturnToLobby(payload);
+  });
+  
   state.socket.on('init', (data) => {
     state.player = data.player;
     state.badges = data.badges || [];
+    state.gameMode = data.gameMode || 'freeplay';
     nameInput.placeholder = data.player.name;
+    state.classicStomp = data.classicStomp || null;
+    state.koth = data.koth || null;
     
     data.players.forEach(p => {
       state.players.set(p.id, p);
@@ -995,6 +1243,46 @@ function connect() {
     }
     
     data.chatHistory.forEach(msg => addChatMessage(msg));
+    
+    // Update game mode info
+    if (data.gameMode) {
+      const gameModeInfo = document.getElementById('game-mode-info');
+      if (gameModeInfo) {
+        const modeNames = {
+          'freeplay': 'Free Build',
+          'classic-stomp': 'Classic Stomp',
+          'king-of-the-hill': 'King of the Hill',
+          'infection': 'Infection',
+          'tower-defense': 'Tower Defense',
+          'racing': 'Race Mode',
+          'creative': 'Creative',
+          'survival': 'Survival'
+        };
+        gameModeInfo.textContent = `Mode: ${modeNames[data.gameMode] || data.gameMode}`;
+      }
+    }
+
+    if (state.gameMode === 'freeplay') {
+      // Free build has no NPCs
+      state.npcs.clear();
+    }
+    if (state.gameMode === 'king-of-the-hill') {
+      // KOTH has no NPCs
+      state.npcs.clear();
+    }
+    if (state.gameMode === 'infection') {
+      // Infection has no NPCs
+      state.npcs.clear();
+    }
+
+    if (state.gameMode !== 'classic-stomp') {
+      const hud = document.getElementById('classic-stomp-hud');
+      if (hud) hud.style.display = 'none';
+    }
+    if (state.gameMode !== 'king-of-the-hill') {
+      const hud = document.getElementById('koth-hud');
+      if (hud) hud.style.display = 'none';
+    }
     
     console.log('Connected as', data.player.name);
   });
@@ -1035,6 +1323,71 @@ function connect() {
   state.socket.on('chatMessage', (message) => {
     addChatMessage(message);
   });
+
+  // Classic stomp match state / scoring
+  state.socket.on('classicStompState', (payload) => {
+    state.classicStomp = payload;
+    updateClassicStompHud();
+  });
+
+  state.socket.on('classicStompScore', (payload) => {
+    if (!payload) return;
+    const p = state.players.get(payload.playerId);
+    if (p) {
+      p.score = payload.score;
+      state.players.set(payload.playerId, p);
+    }
+    if (payload.playerId === state.socket.id && state.player) {
+      state.player.score = payload.score;
+    }
+    updateClassicStompHud();
+  });
+
+  state.socket.on('classicStompEnded', (payload) => {
+    if (state.gameMode !== 'classic-stomp') return;
+    if (payload && payload.tie) {
+      addChatMessage({ type: 'system', text: `Time! Tie at ${payload.score} points.`, timestamp: Date.now() });
+    } else if (payload) {
+      addChatMessage({ type: 'system', text: `Time! ${payload.winnerName} wins with ${payload.score} points!`, timestamp: Date.now() });
+    }
+    updateClassicStompHud();
+  });
+
+  // King of the Hill state / scoring
+  state.socket.on('kothState', (payload) => {
+    state.koth = payload;
+    state.kothControl = { controllerId: payload ? payload.controllerId : null, contested: false };
+    updateKothHud();
+  });
+
+  state.socket.on('kothControl', (payload) => {
+    if (!payload) return;
+    state.kothControl = { controllerId: payload.controllerId || null, contested: !!payload.contested };
+    updateKothHud();
+  });
+
+  state.socket.on('kothScore', (payload) => {
+    if (!payload) return;
+    const p = state.players.get(payload.playerId);
+    if (p) {
+      p.score = payload.score;
+      state.players.set(payload.playerId, p);
+    }
+    if (payload.playerId === state.socket.id && state.player) {
+      state.player.score = payload.score;
+    }
+    updateKothHud();
+  });
+
+  state.socket.on('kothEnded', (payload) => {
+    if (state.gameMode !== 'king-of-the-hill') return;
+    if (payload && payload.tie) {
+      addChatMessage({ type: 'system', text: `Time! KOTH tie at ${payload.score} points.`, timestamp: Date.now() });
+    } else if (payload) {
+      addChatMessage({ type: 'system', text: `Time! ${payload.winnerName} wins KOTH with ${payload.score} points!`, timestamp: Date.now() });
+    }
+    updateKothHud();
+  });
   
   // NPC events
   state.socket.on('npcMoved', (npc) => {
@@ -1072,6 +1425,16 @@ function connect() {
       badge: badge,
       time: Date.now()
     });
+  });
+}
+
+// Leave room button
+const leaveRoomBtn = document.getElementById('leave-room-btn');
+if (leaveRoomBtn) {
+  leaveRoomBtn.addEventListener('click', () => {
+    if (confirm('Are you sure you want to leave the game?')) {
+      window.location.href = '/';
+    }
   });
 }
 

@@ -10,6 +10,7 @@
   <div id="app">
     <div id="game-container">
       <canvas id="game-canvas"></canvas>
+
       <div id="controls-overlay">
         <div class="control-hint">
           <span class="key">WASD</span> Move & Climb
@@ -23,7 +24,11 @@
       <div id="player-info">
         <div id="player-count">Players: 0</div>
         <div id="position-info">Position: (0, 0)</div>
+        <div id="game-mode-info">Mode: Loading...</div>
+        <div id="classic-stomp-hud" style="display:none;">Score: 0 | Time: --:--</div>
+        <div id="koth-hud" style="display:none;">Score: 0 | Time: --:-- | Hill: --</div>
       </div>
+      <button id="leave-room-btn" class="leave-btn">Leave Room</button>
     </div>
     <div id="chat-container">
       <div id="chat-header">

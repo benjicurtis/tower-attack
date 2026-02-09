@@ -92,6 +92,52 @@ body {
   font-weight: bold;
 }
 
+#game-mode-info {
+  color: #FFD93D;
+  font-weight: bold;
+}
+
+#classic-stomp-hud {
+  margin-top: 6px;
+  color: #FFD700;
+  font-weight: 800;
+}
+
+#koth-hud {
+  margin-top: 6px;
+  color: #C7FF6B;
+  font-weight: 800;
+}
+
+/* (Battle Royale styles removed) */
+
+/* Leave Room Button */
+.leave-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  padding: 10px 20px;
+  background: rgba(255, 107, 107, 0.9);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  backdrop-filter: blur(10px);
+  z-index: 10;
+}
+
+.leave-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.5);
+  background: rgba(255, 107, 107, 1);
+}
+
+.leave-btn:active {
+  transform: translateY(0);
+}
+
 /* Chat Container */
 #chat-container {
   width: 350px;
