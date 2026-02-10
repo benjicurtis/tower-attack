@@ -783,6 +783,15 @@ function connectToRoom() {
       p.direction = payload.direction;
       if (payload.score !== undefined) p.score = payload.score;
       if (payload.isInfected !== undefined) p.isInfected = payload.isInfected;
+
+      // Host: check stomp collisions for remote players too
+      if (state.isHost && state.gameMode === 'classic-stomp') {
+        const stomps = checkStompCollision(p);
+        if (stomps.length > 0) processStomps(p, stomps);
+      }
+
+      // Host: infection spread for remote players too
+      if (state.isHost) handleLocalInfectionSpread(p);
     }
   });
 
@@ -1518,7 +1527,8 @@ function drawSelectionIndicator() {
 }
 
 function drawColorPalette() {
-  const startX = canvas.width - 280, startY = 20;
+  const paletteWidth = CONFIG.COLORS.length * 36;
+  const startX = canvas.width - paletteWidth - 160, startY = 20;
   ctx.fillStyle = 'rgba(0,0,0,0.7)'; roundRect(ctx, startX - 10, startY - 10, CONFIG.COLORS.length * 36 + 10, 50, 10); ctx.fill();
   CONFIG.COLORS.forEach((color, i) => {
     const x = startX + i * 36, y = startY;
