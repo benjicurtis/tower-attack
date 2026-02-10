@@ -370,8 +370,8 @@ body {
 /* Players Button & Panel */
 .players-btn {
   position: absolute;
-  top: 20px;
-  right: 160px;
+  top: 62px;
+  right: 20px;
   padding: 10px 20px;
   background: rgba(78, 205, 196, 0.9);
   color: #fff;
@@ -396,8 +396,8 @@ body {
 
 .players-panel {
   position: absolute;
-  top: 70px;
-  right: 160px;
+  top: 104px;
+  right: 20px;
   width: 280px;
   max-height: 400px;
   background: rgba(15, 15, 35, 0.95);
