@@ -91,6 +91,11 @@ const GAME_MODES = {
 
 const INFECTION_COLOR = '#FF5F1F';
 
+// Max build height per game mode
+function getMaxHeight(gameMode) {
+  return gameMode === GAME_MODES.freeplay ? 100 : 10;
+}
+
 function getRandomElement(items) {
   if (!items || items.length === 0) return null;
   return items[Math.floor(Math.random() * items.length)];
@@ -379,8 +384,9 @@ function initializeNPCs(gameState) {
 }
 
 // Get ground level at position (top of highest block)
-function getGroundLevel(x, z, gameState) {
-  for (let y = 10; y >= 0; y--) {
+function getGroundLevel(x, z, gameState, maxHeight) {
+  const top = maxHeight || 10;
+  for (let y = top; y >= 0; y--) {
     const key = `${x},${y},${z}`;
     if (gameState.blocks.has(key)) {
       return y + 1;
@@ -396,7 +402,8 @@ function canMoveTo(fromX, fromY, fromZ, toX, toZ, gameState) {
     return { canMove: false };
   }
   
-  const targetGroundLevel = getGroundLevel(toX, toZ, gameState);
+  const maxH = getMaxHeight(gameState.gameMode);
+  const targetGroundLevel = getGroundLevel(toX, toZ, gameState, maxH);
   const heightDiff = targetGroundLevel - fromY;
   
   // Can climb up 1 block, can fall any distance
@@ -458,7 +465,7 @@ function respawnNPC(npcId, room) {
     npc.isAlive = true;
     npc.x = Math.floor(Math.random() * 14) + 3;
     npc.z = Math.floor(Math.random() * 14) + 3;
-    npc.y = getGroundLevel(npc.x, npc.z, room) ?? 1;
+    npc.y = getGroundLevel(npc.x, npc.z, room, getMaxHeight(room.gameMode)) ?? 1;
     npc.direction = Math.floor(Math.random() * 4);
     io.to(room.id).emit('npcRespawned', npc);
   }
@@ -521,7 +528,7 @@ function startClassicStompIfNeeded(room) {
 function respawnPlayerInRoom(room, player) {
   player.x = Math.floor(Math.random() * 10) + 5;
   player.z = Math.floor(Math.random() * 10) + 5;
-  player.y = getGroundLevel(player.x, player.z, room);
+  player.y = getGroundLevel(player.x, player.z, room, getMaxHeight(room.gameMode));
   player.previousY = player.y;
   player.direction = player.direction ?? 0;
 }
@@ -544,7 +551,7 @@ function restartClassicStomp(roomId) {
     npc.isAlive = true;
     npc.x = Math.floor(Math.random() * 14) + 3;
     npc.z = Math.floor(Math.random() * 14) + 3;
-    npc.y = getGroundLevel(npc.x, npc.z, room) ?? 1;
+    npc.y = getGroundLevel(npc.x, npc.z, room, getMaxHeight(room.gameMode)) ?? 1;
     io.to(room.id).emit('npcRespawned', npc);
   });
 
@@ -1054,7 +1061,8 @@ io.on('connection', (socket) => {
       const { x, y, z, color } = data;
       
       // Validate position
-      if (x >= 0 && x < WORLD_SIZE && y >= 1 && y <= 10 && z >= 0 && z < WORLD_SIZE) {
+      const maxH = getMaxHeight(currentRoom.gameMode);
+      if (x >= 0 && x < WORLD_SIZE && y >= 1 && y <= maxH && z >= 0 && z < WORLD_SIZE) {
         const key = `${x},${y},${z}`;
         
         // Don't place on floor or existing blocks

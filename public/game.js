@@ -51,6 +51,10 @@ const MODE_NAMES = {
   'king-of-the-hill': 'King of the Hill', 'infection': 'Infection'
 };
 
+function getMaxHeight() {
+  return state.gameMode === 'freeplay' ? 100 : 10;
+}
+
 // ── Game State ──────────────────────────────────────────────────────
 const state = {
   // Identity
@@ -166,7 +170,8 @@ function initializeNPCs() {
 
 // ── Physics ─────────────────────────────────────────────────────────
 function getGroundLevel(x, z) {
-  for (let y = 10; y >= 0; y--) {
+  const maxH = getMaxHeight();
+  for (let y = maxH; y >= 0; y--) {
     if (state.blocks.has(`${x},${y},${z}`)) return y + 1;
   }
   return 1;
@@ -1159,11 +1164,12 @@ function placeBlock() {
   }
   targetX = Math.max(0, Math.min(CONFIG.WORLD_SIZE - 1, targetX));
   targetZ = Math.max(0, Math.min(CONFIG.WORLD_SIZE - 1, targetZ));
+  const maxH = getMaxHeight();
   let targetY = 1;
-  for (let checkY = 10; checkY >= 1; checkY--) {
+  for (let checkY = maxH; checkY >= 1; checkY--) {
     if (state.blocks.has(`${targetX},${checkY},${targetZ}`)) { targetY = checkY + 1; break; }
   }
-  if (targetY <= 10) {
+  if (targetY <= maxH) {
     const key = `${targetX},${targetY},${targetZ}`;
     if (!state.blocks.has(key)) {
       const block = { x: targetX, y: targetY, z: targetZ, color: CONFIG.COLORS[state.selectedColor], type: 'block', placedBy: state.playerId };
@@ -1183,7 +1189,7 @@ function removeBlock() {
   }
   targetX = Math.max(0, Math.min(CONFIG.WORLD_SIZE - 1, targetX));
   targetZ = Math.max(0, Math.min(CONFIG.WORLD_SIZE - 1, targetZ));
-  for (let y = 10; y >= 1; y--) {
+  for (let y = getMaxHeight(); y >= 1; y--) {
     const key = `${targetX},${y},${targetZ}`;
     const block = state.blocks.get(key);
     if (block && block.type !== 'floor') {
