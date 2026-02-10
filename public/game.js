@@ -753,8 +753,9 @@ function connectToRoom() {
         }
       }
     }
-    // Remove players no longer in presence
+    // Remove players no longer in presence (never remove local player)
     for (const [pid] of state.players) {
+      if (pid === state.playerId) continue;
       if (!presentIds.has(pid)) {
         const gone = state.players.get(pid);
         state.players.delete(pid);
