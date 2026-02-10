@@ -17,6 +17,10 @@ const INFECTION = {
   PARTICLE_RGB: { r: 255, g: 40, b: 40 }
 };
 
+const FALL_ANIMATION_MS = 600;
+const FALL_RESPAWN_MS = 2000;
+const FALL_MODES = ['classic-stomp', 'king-of-the-hill', 'infection'];
+
 const MAX_PLAYERS = 10;
 
 const NPC_TYPES = [
@@ -183,6 +187,41 @@ function respawnPlayerPosition(player) {
   player.direction = player.direction ?? 0;
 }
 
+// ── Fall Off Edge ───────────────────────────────────────────────────
+function canFallOffEdge() {
+  return FALL_MODES.includes(state.gameMode);
+}
+
+function triggerPlayerFall(player) {
+  if (player.isFalling || player.isRespawning) return;
+  player.isFalling = true;
+  player.fallStartedAt = Date.now();
+  broadcastEvent('playerFell', {
+    playerId: player.id,
+    x: player.x, y: player.y, z: player.z
+  });
+}
+
+function updateFallStates() {
+  const now = Date.now();
+  state.players.forEach(player => {
+    if (player.isFalling) {
+      if (now - player.fallStartedAt >= FALL_ANIMATION_MS) {
+        player.isFalling = false;
+        player.isRespawning = true;
+        player.respawnAt = now + FALL_RESPAWN_MS;
+      }
+    } else if (player.isRespawning && now >= player.respawnAt) {
+      player.isRespawning = false;
+      if (player.id === state.playerId) {
+        respawnPlayerPosition(player);
+        player.spawnAnimStart = now;
+        throttledBroadcastMove();
+      }
+    }
+  });
+}
+
 // ── NPC Simulation (host only) ──────────────────────────────────────
 function moveNPC(npc) {
   if (!npc.isAlive) return;
@@ -304,6 +343,7 @@ function tickKoth() {
   const hill = state.koth.hill;
   const onHill = [];
   state.players.forEach(p => {
+    if (p.isFalling || p.isRespawning) return;
     const dx = (p.x ?? 0) - hill.x, dz = (p.z ?? 0) - hill.z;
     if (Math.sqrt(dx * dx + dz * dz) <= hill.radius) onHill.push(p);
   });
@@ -374,9 +414,11 @@ function checkInfectionEnd() {
 
 function handleLocalInfectionSpread(movingPlayer) {
   if (state.gameMode !== 'infection' || !state.isHost) return;
+  if (movingPlayer.isFalling || movingPlayer.isRespawning) return;
   ensureAtLeastOneInfected();
   const others = Array.from(state.players.values()).filter(p =>
     p.id !== movingPlayer.id && p.x === movingPlayer.x && p.z === movingPlayer.z && p.y === movingPlayer.y
+    && !p.isFalling && !p.isRespawning
   );
   if (movingPlayer.isInfected) {
     others.forEach(o => infectPlayer(o, movingPlayer));
@@ -778,6 +820,12 @@ function connectToRoom() {
     if (!payload || payload.playerId === state.playerId) return;
     const p = state.players.get(payload.playerId);
     if (p) {
+      // If player was falling/respawning, they've respawned – show spawn animation
+      if (p.isFalling || p.isRespawning) {
+        p.isFalling = false;
+        p.isRespawning = false;
+        p.spawnAnimStart = Date.now();
+      }
       p.previousY = p.y;
       p.x = payload.x; p.y = payload.y; p.z = payload.z;
       p.direction = payload.direction;
@@ -927,6 +975,16 @@ function connectToRoom() {
     }
   });
 
+  state.roomChannel.on('broadcast', { event: 'playerFell' }, ({ payload }) => {
+    if (!payload) return;
+    const player = state.players.get(payload.playerId);
+    if (player && !player.isFalling && !player.isRespawning) {
+      if (payload.x !== undefined) { player.x = payload.x; player.y = payload.y; player.z = payload.z; }
+      player.isFalling = true;
+      player.fallStartedAt = Date.now();
+    }
+  });
+
   state.roomChannel.on('broadcast', { event: 'infectionSpread' }, ({ payload }) => {
     if (!payload) return;
     const target = state.players.get(payload.targetId);
@@ -982,6 +1040,7 @@ function connectToRoom() {
 // ── Movement ────────────────────────────────────────────────────────
 function handleMovement() {
   if (!state.player || !state.roomChannel) return;
+  if (state.player.isFalling || state.player.isRespawning) return;
   const now = Date.now();
   if (now - state.lastMoveTime < state.moveDelay) return;
 
@@ -1011,6 +1070,13 @@ function handleMovement() {
   }
 
   if (moved) {
+    // Check if player walks off the edge in supported game modes
+    if (canFallOffEdge() && (newX < 0 || newX >= CONFIG.WORLD_SIZE || newZ < 0 || newZ >= CONFIG.WORLD_SIZE)) {
+      state.player.direction = newDirection;
+      triggerPlayerFall(state.player);
+      state.lastMoveTime = now;
+      return;
+    }
     newX = Math.max(0, Math.min(CONFIG.WORLD_SIZE - 1, newX));
     newZ = Math.max(0, Math.min(CONFIG.WORLD_SIZE - 1, newZ));
     const moveResult = canMoveTo(state.player.x, state.player.y, state.player.z, newX, newZ);
@@ -1056,7 +1122,7 @@ function throttledBroadcastMove() {
 
 // ── Block Placement / Removal ───────────────────────────────────────
 function placeBlock() {
-  if (!state.player) return;
+  if (!state.player || state.player.isFalling || state.player.isRespawning) return;
   const { x, y, z, direction } = state.player;
   let targetX = x, targetZ = z;
   switch (direction) {
@@ -1080,7 +1146,7 @@ function placeBlock() {
 }
 
 function removeBlock() {
-  if (!state.player) return;
+  if (!state.player || state.player.isFalling || state.player.isRespawning) return;
   const { x, z, direction } = state.player;
   let targetX = x, targetZ = z;
   switch (direction) {
@@ -1102,7 +1168,7 @@ function removeBlock() {
 
 // ── Push ────────────────────────────────────────────────────────────
 function performPush() {
-  if (!state.player) return;
+  if (!state.player || state.player.isFalling || state.player.isRespawning) return;
   const now = Date.now();
   if (now - (state.player.lastPushAt || 0) < 2000) return;
   state.player.lastPushAt = now;
@@ -1117,9 +1183,13 @@ function performPush() {
   if (!victim) return;
 
   let movedTiles = 0, curX = victim.x, curZ = victim.z, curY = victim.y;
+  let pushedOffEdge = false;
   for (let step = 1; step <= 2; step++) {
     const nx = curX + dx, nz = curZ + dz;
-    if (nx < 0 || nx >= CONFIG.WORLD_SIZE || nz < 0 || nz >= CONFIG.WORLD_SIZE) break;
+    if (nx < 0 || nx >= CONFIG.WORLD_SIZE || nz < 0 || nz >= CONFIG.WORLD_SIZE) {
+      if (canFallOffEdge()) pushedOffEdge = true;
+      break;
+    }
     const occupied = Array.from(state.players.values()).some(p => p.id !== victim.id && p.x === nx && p.z === nz);
     if (occupied) break;
     const res = canMoveTo(curX, curY, curZ, nx, nz);
@@ -1135,6 +1205,9 @@ function performPush() {
       attackerId: state.playerId, victimId: victim.id,
       newX: curX, newY: curY, newZ: curZ, tiles: movedTiles
     });
+  }
+  if (pushedOffEdge) {
+    triggerPlayerFall(victim);
   }
 }
 
@@ -1422,7 +1495,7 @@ function render() {
   drawGrid(); drawKothHill();
   const renderList = [];
   state.blocks.forEach((block) => { renderList.push({ type: 'block', x: block.x, y: block.y, z: block.z, color: block.color, sortKey: block.x + block.z + block.y * 0.1 }); });
-  state.players.forEach((player) => { renderList.push({ type: 'player', x: player.x, y: player.y, z: player.z, player, sortKey: player.x + player.z + player.y * 0.1 + 0.05 }); });
+  state.players.forEach((player) => { if (!player.isRespawning) renderList.push({ type: 'player', x: player.x, y: player.y, z: player.z, player, sortKey: player.x + player.z + player.y * 0.1 + 0.05 }); });
   state.npcs.forEach((npc) => { if (npc.isAlive) renderList.push({ type: 'npc', x: npc.x, y: npc.y, z: npc.z, npc, sortKey: npc.x + npc.z + npc.y * 0.1 + 0.03 }); });
   renderList.sort((a, b) => a.sortKey - b.sortKey);
   renderList.forEach(obj => {
@@ -1464,6 +1537,70 @@ function drawGrid() {
 function drawPlayerIndicator(x, y, z, player) {
   const iso = toIso(x, y, z), screenX = iso.x + state.camera.x + canvas.width / 2, screenY = iso.y + state.camera.y + canvas.height / 2;
   const playerColor = getPlayerDisplayColor(player);
+
+  // ── Fall animation: shrink + spin + fade + drop ──
+  if (player.isFalling) {
+    const progress = Math.min(1, (Date.now() - player.fallStartedAt) / FALL_ANIMATION_MS);
+    const scale = 1 - progress * 0.95;
+    const alpha = 1 - progress;
+    const rotation = progress * Math.PI * 3;
+    const yDrop = progress * 50;
+    const pivotX = screenX, pivotY = screenY - 10;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(pivotX, pivotY + yDrop);
+    ctx.rotate(rotation);
+    ctx.scale(scale, scale);
+    ctx.translate(-pivotX, -pivotY);
+    const g = ctx.createRadialGradient(screenX, screenY + 20, 0, screenX, screenY + 20, 30);
+    g.addColorStop(0, playerColor + '40'); g.addColorStop(1, 'transparent');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(screenX, screenY + 20, 30, 15, 0, 0, Math.PI * 2); ctx.fill();
+    drawPlayerAvatar(screenX, screenY - 30, player, true);
+    ctx.restore();
+    // Draw a swirl ring at the fall position
+    ctx.save();
+    ctx.strokeStyle = `rgba(255, 255, 255, ${(1 - progress) * 0.5})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(screenX, screenY + 20, 20 + progress * 15, 10 + progress * 8, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+
+  // ── Spawn animation: pop in from small + fade in ──
+  if (player.spawnAnimStart) {
+    const progress = Math.min(1, (Date.now() - player.spawnAnimStart) / 400);
+    if (progress >= 1) {
+      player.spawnAnimStart = null;
+    } else {
+      const scale = 0.3 + progress * 0.7;
+      const alpha = progress;
+      const pivotX = screenX, pivotY = screenY - 10;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.translate(pivotX, pivotY);
+      ctx.scale(scale, scale);
+      ctx.translate(-pivotX, -pivotY);
+      const g = ctx.createRadialGradient(screenX, screenY + 20, 0, screenX, screenY + 20, 30);
+      g.addColorStop(0, playerColor + '40'); g.addColorStop(1, 'transparent');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(screenX, screenY + 20, 30, 15, 0, 0, Math.PI * 2); ctx.fill();
+      drawPlayerAvatar(screenX, screenY - 30, player, true);
+      ctx.restore();
+      // Spawn sparkle ring
+      ctx.save();
+      const sparkleAlpha = (1 - progress) * 0.6;
+      ctx.strokeStyle = `rgba(255, 255, 100, ${sparkleAlpha})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(screenX, screenY + 20, 10 + progress * 30, 5 + progress * 15, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+      return;
+    }
+  }
+
+  // ── Normal rendering ──
   const gradient = ctx.createRadialGradient(screenX, screenY + 20, 0, screenX, screenY + 20, 30);
   gradient.addColorStop(0, playerColor + '40'); gradient.addColorStop(1, 'transparent');
   ctx.fillStyle = gradient; ctx.beginPath(); ctx.ellipse(screenX, screenY + 20, 30, 15, 0, 0, Math.PI * 2); ctx.fill();
@@ -1475,7 +1612,7 @@ function spawnInfectionParticles() {
   if (!anyInfected) { if (infectionEmitAt.size > 0 && Math.random() < 0.01) infectionEmitAt.clear(); return; }
   const now = Date.now();
   state.players.forEach((player) => {
-    if (!player || !player.isInfected) return;
+    if (!player || !player.isInfected || player.isFalling || player.isRespawning) return;
     const last = infectionEmitAt.get(player.id) || 0;
     if (now - last < 45) return;
     infectionEmitAt.set(player.id, now);
@@ -1510,7 +1647,7 @@ function drawNPCIndicator(x, y, z, npc) {
 }
 
 function drawSelectionIndicator() {
-  if (!state.player) return;
+  if (!state.player || state.player.isFalling || state.player.isRespawning) return;
   const { x, y, z, direction } = state.player;
   let targetX = x, targetZ = z;
   switch (direction) { case 0: targetZ++; break; case 1: targetX--; break; case 2: targetZ--; break; case 3: targetX++; break; }
@@ -1597,6 +1734,7 @@ function showOfflineOverlay(message) {
 
 // ── Game Loop ───────────────────────────────────────────────────────
 function gameLoop() {
+  updateFallStates();
   handleMovement();
   updateCamera();
   render();
