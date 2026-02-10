@@ -524,6 +524,9 @@ function becomeHost() {
 
   // Advertise on directory
   advertiseRoom();
+
+  // Show host controls
+  if (typeof updatePlayersButton === 'function') updatePlayersButton();
 }
 
 function relinquishHost() {
@@ -534,6 +537,9 @@ function relinquishHost() {
   stopNPCMovement();
   if (state.kothInterval) { clearInterval(state.kothInterval); state.kothInterval = null; }
   stopDirectoryAdvertise();
+
+  // Hide host controls
+  if (typeof updatePlayersButton === 'function') updatePlayersButton();
 }
 
 function startHeartbeat() {
@@ -997,6 +1003,25 @@ function connectToRoom() {
     }
   });
 
+  state.roomChannel.on('broadcast', { event: 'playerKicked' }, ({ payload }) => {
+    if (!payload) return;
+    if (payload.kickedId === state.playerId) {
+      // We got kicked — leave the room
+      alert('You have been kicked from the game by the host.');
+      if (state.roomChannel) { try { state.roomChannel.untrack(); } catch (_) { /* ignore */ } }
+      sessionStorage.removeItem('roomId');
+      sessionStorage.removeItem('gameMode');
+      window.location.href = '/';
+      return;
+    }
+    // Someone else was kicked — remove them from local player map
+    const kicked = state.players.get(payload.kickedId);
+    if (kicked) {
+      state.players.delete(payload.kickedId);
+      addChatMessage({ type: 'system', text: `${kicked.name} was kicked by the host`, timestamp: Date.now() });
+    }
+  });
+
   state.roomChannel.on('broadcast', { event: 'playerNameChange' }, ({ payload }) => {
     if (!payload || payload.playerId === state.playerId) return;
     const p = state.players.get(payload.playerId);
@@ -1318,6 +1343,17 @@ function updateUI() {
   }
   updateClassicStompHud();
   updateKothHud();
+  // Keep players button visibility in sync with host status
+  if (typeof updatePlayersButton === 'function') updatePlayersButton();
+  // Refresh player list if the panel is open (throttled to once per second)
+  if (typeof updatePlayersList === 'function') {
+    const _now = Date.now();
+    if (!updateUI._lastPanelRefresh || _now - updateUI._lastPanelRefresh > 1000) {
+      updateUI._lastPanelRefresh = _now;
+      const _panel = document.getElementById('players-panel');
+      if (_panel && _panel.style.display !== 'none') updatePlayersList();
+    }
+  }
 }
 
 function updateClassicStompHud() {
@@ -1756,6 +1792,88 @@ function gameLoop() {
   render();
   updateUI();
   requestAnimationFrame(gameLoop);
+}
+
+// ── Kick Player (host only) ─────────────────────────────────────────
+function kickPlayer(playerId) {
+  if (!state.isHost || playerId === state.playerId) return;
+  const target = state.players.get(playerId);
+  if (!target) return;
+  if (!confirm(`Kick ${target.name} from the game?`)) return;
+  broadcastEvent('playerKicked', { kickedId: playerId, kickedName: target.name });
+  broadcastSystemChat(`${target.name} was kicked by the host`);
+  state.players.delete(playerId);
+  updatePlayersList();
+  if (state.isHost) updateDirectoryPresence();
+}
+
+// ── Players Panel UI ────────────────────────────────────────────────
+const playersBtn = document.getElementById('players-btn');
+const playersPanel = document.getElementById('players-panel');
+const playersPanelClose = document.getElementById('players-panel-close');
+const playersList = document.getElementById('players-list');
+
+function togglePlayersPanel() {
+  const isVisible = playersPanel.style.display !== 'none';
+  playersPanel.style.display = isVisible ? 'none' : 'flex';
+  if (!isVisible) updatePlayersList();
+}
+
+if (playersBtn) playersBtn.addEventListener('click', togglePlayersPanel);
+if (playersPanelClose) playersPanelClose.addEventListener('click', () => { playersPanel.style.display = 'none'; });
+
+function updatePlayersList() {
+  if (!playersList || playersPanel.style.display === 'none') return;
+  playersList.innerHTML = '';
+  const sortedPlayers = Array.from(state.players.values()).sort((a, b) => {
+    if (a.id === state.hostId) return -1;
+    if (b.id === state.hostId) return 1;
+    return (a.name || '').localeCompare(b.name || '');
+  });
+  sortedPlayers.forEach(p => {
+    const item = document.createElement('div');
+    item.className = 'player-list-item';
+    const info = document.createElement('div');
+    info.className = 'player-list-item-info';
+    const colorDot = document.createElement('span');
+    colorDot.className = 'player-list-color';
+    colorDot.style.background = getPlayerDisplayColor(p);
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'player-list-name';
+    nameSpan.textContent = p.name || 'Player';
+    info.appendChild(colorDot);
+    info.appendChild(nameSpan);
+    if (p.id === state.hostId) {
+      const tag = document.createElement('span');
+      tag.className = 'player-list-tag host';
+      tag.textContent = 'HOST';
+      info.appendChild(tag);
+    }
+    if (p.id === state.playerId) {
+      const tag = document.createElement('span');
+      tag.className = 'player-list-tag you';
+      tag.textContent = 'YOU';
+      info.appendChild(tag);
+    }
+    item.appendChild(info);
+    // Host can kick anyone except themselves
+    if (state.isHost && p.id !== state.playerId) {
+      const kickBtn = document.createElement('button');
+      kickBtn.className = 'kick-btn';
+      kickBtn.textContent = 'Kick';
+      kickBtn.addEventListener('click', () => kickPlayer(p.id));
+      item.appendChild(kickBtn);
+    }
+    playersList.appendChild(item);
+  });
+}
+
+function updatePlayersButton() {
+  if (playersBtn) {
+    playersBtn.style.display = state.isHost ? 'block' : 'none';
+    // If no longer host, close the panel
+    if (!state.isHost && playersPanel) playersPanel.style.display = 'none';
+  }
 }
 
 // ── Leave room ──────────────────────────────────────────────────────
