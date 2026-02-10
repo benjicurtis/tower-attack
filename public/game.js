@@ -192,13 +192,15 @@ function canFallOffEdge() {
   return FALL_MODES.includes(state.gameMode);
 }
 
-function triggerPlayerFall(player) {
+function triggerPlayerFall(player, fallDirection) {
   if (player.isFalling || player.isRespawning) return;
   player.isFalling = true;
   player.fallStartedAt = Date.now();
+  player.fallDirection = fallDirection !== undefined ? fallDirection : player.direction;
   broadcastEvent('playerFell', {
     playerId: player.id,
-    x: player.x, y: player.y, z: player.z
+    x: player.x, y: player.y, z: player.z,
+    fallDirection: player.fallDirection
   });
 }
 
@@ -982,6 +984,7 @@ function connectToRoom() {
       if (payload.x !== undefined) { player.x = payload.x; player.y = payload.y; player.z = payload.z; }
       player.isFalling = true;
       player.fallStartedAt = Date.now();
+      player.fallDirection = payload.fallDirection !== undefined ? payload.fallDirection : player.direction;
     }
   });
 
@@ -1207,7 +1210,7 @@ function performPush() {
     });
   }
   if (pushedOffEdge) {
-    triggerPlayerFall(victim);
+    triggerPlayerFall(victim, dir);
   }
 }
 
@@ -1538,31 +1541,44 @@ function drawPlayerIndicator(x, y, z, player) {
   const iso = toIso(x, y, z), screenX = iso.x + state.camera.x + canvas.width / 2, screenY = iso.y + state.camera.y + canvas.height / 2;
   const playerColor = getPlayerDisplayColor(player);
 
-  // ── Fall animation: shrink + spin + fade + drop ──
+  // ── Fall animation: slide off edge + tumble into void ──
   if (player.isFalling) {
     const progress = Math.min(1, (Date.now() - player.fallStartedAt) / FALL_ANIMATION_MS);
-    const scale = 1 - progress * 0.95;
-    const alpha = 1 - progress;
-    const rotation = progress * Math.PI * 3;
-    const yDrop = progress * 50;
-    const pivotX = screenX, pivotY = screenY - 10;
+    // Compute isometric slide direction based on fallDirection
+    const dir = player.fallDirection ?? player.direction ?? 0;
+    const dirVecs = [{ dx: 0, dz: 1 }, { dx: -1, dz: 0 }, { dx: 0, dz: -1 }, { dx: 1, dz: 0 }];
+    const { dx, dz } = dirVecs[dir];
+    const slideX = (dx - dz) * (CONFIG.TILE_WIDTH / 2) * progress * 1.5;
+    const slideY = (dx + dz) * (CONFIG.TILE_HEIGHT / 2) * progress * 1.5;
+    // Gravity: accelerating downward drop
+    const gravityDrop = progress * progress * 140;
+    const scale = 1 - progress * 0.7;
+    const alpha = Math.max(0, 1 - progress * 1.2);
+    const rotation = progress * Math.PI * 2.5;
+    const drawX = screenX + slideX;
+    const drawY = screenY + slideY + gravityDrop;
+    // Draw fading shadow at original position (where they fell from)
+    ctx.save();
+    ctx.globalAlpha = (1 - progress) * 0.3;
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.beginPath(); ctx.ellipse(screenX, screenY + 20, 15 * (1 - progress), 7 * (1 - progress), 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    // Draw the tumbling character sliding off and falling
     ctx.save();
     ctx.globalAlpha = alpha;
-    ctx.translate(pivotX, pivotY + yDrop);
+    ctx.translate(drawX, drawY - 10);
     ctx.rotate(rotation);
     ctx.scale(scale, scale);
-    ctx.translate(-pivotX, -pivotY);
-    const g = ctx.createRadialGradient(screenX, screenY + 20, 0, screenX, screenY + 20, 30);
-    g.addColorStop(0, playerColor + '40'); g.addColorStop(1, 'transparent');
-    ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(screenX, screenY + 20, 30, 15, 0, 0, Math.PI * 2); ctx.fill();
-    drawPlayerAvatar(screenX, screenY - 30, player, true);
+    ctx.translate(-drawX, -(drawY - 10));
+    drawPlayerAvatar(drawX, drawY - 30, player, false);
     ctx.restore();
-    // Draw a swirl ring at the fall position
+    // Swirl ring at the edge where they fell
     ctx.save();
-    ctx.strokeStyle = `rgba(255, 255, 255, ${(1 - progress) * 0.5})`;
+    const ringAlpha = Math.max(0, (1 - progress * 1.5)) * 0.5;
+    ctx.strokeStyle = `rgba(255, 255, 255, ${ringAlpha})`;
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.ellipse(screenX, screenY + 20, 20 + progress * 15, 10 + progress * 8, 0, 0, Math.PI * 2);
+    ctx.ellipse(screenX, screenY + 20, 15 + progress * 20, 8 + progress * 10, 0, 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
     return;
