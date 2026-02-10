@@ -1,173 +1,116 @@
-# 🏰 Tower Attack - Multiplayer Isometric Game
+# Tower Attack - Multiplayer Isometric Game
 
-A fun multiplayer isometric game with a lobby system, multiple game modes, and badge collection!
+A fun multiplayer isometric game with a lobby system, multiple game modes, and real-time gameplay — deployable on **Vercel** (or any static host) using **Supabase Realtime**.
+
+## Architecture
+
+The game uses **Supabase Realtime Channels** for all multiplayer communication. There is **no custom server process** required — everything runs in the browser.
+
+- **Lobby** subscribes to a `rooms:directory` channel. Each room's host advertises the room via Presence.
+- **Per-room channel** carries Presence (who's connected) and Broadcast events (moves, chat, blocks, NPC ticks, mode state).
+- **Host-client authoritative**: the first player in a room becomes the "host" and runs NPC movement, match timers, and state sync. If the host disconnects, another player is automatically elected.
 
 ## Features
 
-### 🎮 Game Modes
+### Game Modes
 
-1. **Free Build** 🏗️
-   - Build freely and explore the world
-   - Collect badges by stomping NPCs
-   - Perfect for casual play
-   - Tag: Casual
+1. **Free Build** — Build freely and explore. No NPCs. (Casual)
+2. **Classic Stomp** — NPCs enabled. Stomp them from above! Timed match with scoring. (Action)
+3. **King of the Hill** — Hold the hill to earn points. Most points wins. (Competitive)
+4. **Infection** — One player starts infected. Touch a carrier to spread it. (Infection)
 
-2. **Tower Defense** 🛡️
-   - Build towers to defend against waves of enemies
-   - Cooperative gameplay
-   - Tag: Action
+### Gameplay
 
-3. **Race Mode** 🏁
-   - Race to the finish line
-   - Climb and build to reach the goal faster
-   - Tag: Action
-
-4. **Creative** 🎨
-   - Unlimited blocks and resources
-   - Pure creativity with no limits
-   - Tag: Casual
-
-5. **Survival** 💀
-   - Survive against increasing waves of NPCs
-   - Test your skills and strategy
-   - Tag: Competitive
-
-### 🎯 Badge System
-
-Earn badges by stomping NPCs from above:
-
-- **First Blood** 🎯 - Stomp your first NPC
-- **Ghost Buster** 👻 - Stomp Blinky the Ghost
-- **Slime Slayer** 🟢 - Squish Goopy the Slime
-- **Robot Wrecker** 🤖 - Deactivate Beep-Boop
-- **Mushroom Masher** 🍄 - Flatten Shroomie
-- **Combo King** 👑 - Stomp 3 NPCs in 10 seconds
-- **Sky Diver** 🪂 - Stomp from 3+ blocks high
-- **Serial Stomper** 👟 - Stomp 10 NPCs total
-- **Speed Demon** ⚡ - Stomp within 5 seconds of spawning
-- **Perfectionist** 💎 - Collect all NPC-specific badges
-
-### 🎨 Features
-
-- **Lobby System**: Select your name, color, and game mode before joining
-- **Multiple Rooms**: Create or join existing game rooms
-- **Real-time Chat**: Communicate with other players
-- **Isometric Graphics**: Beautiful 3D-looking world in 2D
-- **Block Building**: Place and remove colorful blocks
-- **Climbing System**: Climb up blocks to reach higher areas
-- **NPC Characters**: Unique NPCs with different personalities
-- **Badge Notifications**: Animated notifications when earning badges
+- **Lobby System**: Select your name, color, and game mode before joining.
+- **Multiple Rooms**: Create or join existing game rooms.
+- **Real-time Chat**: Communicate with other players.
+- **Isometric Graphics**: Beautiful 3D-looking world rendered on HTML5 Canvas.
+- **Block Building**: Place and remove colorful blocks.
+- **Climbing System**: Climb up blocks to reach higher areas.
+- **NPC Characters**: Unique NPCs with different personalities (Classic Stomp mode).
+- **Push Mechanic**: Push other players with the P key.
+- **Host Failover**: If the room host disconnects, a new host is elected automatically.
 
 ## Controls
 
-- **WASD** - Move and Climb
-- **Q/E** - Rotate camera view
-- **Space** - Place block
-- **X** - Remove block
-- **1-8** - Select block color
-- **Stomp NPCs** - Land on them from above for badges!
+| Key | Action |
+|-----|--------|
+| WASD / Arrows | Move and climb |
+| Q / E | Rotate camera view |
+| Space | Place block |
+| X | Remove block |
+| 1-8 | Select block color |
+| P | Push player in front |
 
 ## Getting Started
 
-### Installation
+### 1. Create a Supabase Project
 
-1. Clone or download this repository
-2. Navigate to the `tower-attack` folder
-3. Install dependencies:
-   ```bash
-   npm install
-   ```
+1. Go to [supabase.com](https://supabase.com) and create a free project.
+2. Realtime is enabled by default — no tables or database setup needed.
+3. Copy your **Project URL** and **anon (public) key** from Settings > API.
 
-### Running the Server
+### 2. Configure
 
-Start the server:
-```bash
-node server.js
+Edit `public/config.js`:
+
+```js
+window.SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
+window.SUPABASE_ANON_KEY = "eyJ...your-anon-key...";
 ```
 
-The server will run on `http://localhost:8080`
+### 3. Deploy to Vercel
 
-### Playing the Game
+Deploy the `tower-attack/public/` directory as a static site:
 
-1. Open your browser and go to `http://localhost:8080`
-2. You'll see the lobby with:
-   - Name input field
-   - Color picker
-   - Game mode selection
-   - Active rooms list
-3. Enter your name and select a color
-4. Choose a game mode by clicking on a mode card
-5. Either:
-   - Click **Create Room** to start a new room
-   - Click **Quick Join** to join an existing room of that mode
-   - Or click on an active room in the list to join it
-6. Start playing!
+```bash
+cd tower-attack
+npx vercel --prod
+```
 
-### Multiplayer
+Or connect the repo to Vercel and set the root directory to `tower-attack/public`.
 
-- Each room supports up to 10 players
-- Rooms are automatically created when you select "Create Room"
-- Empty rooms are automatically deleted when all players leave
-- The lobby shows real-time player counts for each game mode
+### 4. Local Development
 
-## Technical Details
+You can also open `public/lobby.html` directly or serve with any static file server:
 
-### Technologies Used
+```bash
+npx serve public
+```
 
-- **Backend**: Node.js, Express, Socket.IO
-- **Frontend**: Vanilla JavaScript, HTML5 Canvas, CSS3
-- **Real-time Communication**: WebSockets (Socket.IO)
+The legacy `server.js` (Socket.IO) is still in the repo but is **not required** for the Supabase-based deployment.
 
-### Project Structure
+## Project Structure
 
 ```
 tower-attack/
-├── server.js           # Main server file with game logic
 ├── public/
-│   ├── lobby.html      # Lobby page
-│   ├── lobby.css       # Lobby styles
-│   ├── lobby.js        # Lobby client logic
-│   ├── game.html       # Game page
-│   ├── game.js         # Game client logic
-│   ├── styles.css      # Game styles
-│   └── index.html      # Redirects to lobby
-├── package.json        # Dependencies
-└── README.md          # This file
+│   ├── config.js           # Supabase URL + anon key
+│   ├── supabaseClient.js   # Thin Supabase wrapper (getPlayerId, getSupabase)
+│   ├── lobby.html           # Lobby page
+│   ├── lobby.css            # Lobby styles
+│   ├── lobby.js             # Lobby client (rooms directory via Presence)
+│   ├── game.html            # Game page
+│   ├── game.js              # Game client (room channel, host election, rendering)
+│   ├── styles.css           # Game styles
+│   └── index.html           # Redirect to lobby
+├── server.js               # Legacy Socket.IO server (not needed for Vercel)
+├── package.json
+└── README.md
 ```
 
-### How It Works
+## How It Works
 
-1. **Lobby System**: 
-   - Players connect to the lobby first
-   - They can see all available rooms and game modes
-   - Creating or joining a room takes them to the game page
+1. **Lobby**: Players connect to the `rooms:directory` Supabase channel. Active rooms appear via Presence advertisements from each room's host.
 
-2. **Room Management**:
-   - Each room is isolated with its own game state
-   - Rooms have separate blocks, NPCs, players, and chat
-   - NPCs move independently in each room
+2. **Room Creation**: Generating a room ID + navigating to the game page. The first player becomes host and advertises the room.
 
-3. **Game State**:
-   - Server maintains authoritative game state
-   - Clients send input, server validates and broadcasts updates
-   - Real-time synchronization using Socket.IO
+3. **Host Election**: Deterministic election via broadcast claims. Smallest timestamp wins, with lexicographic tie-break on player ID. Heartbeat monitored every second; failover triggers after 3.5 seconds of silence.
 
-## Future Enhancements
+4. **State Sync**: New joiners request a state snapshot from the host (blocks, NPCs, mode state, chat history). Retries automatically if no response.
 
-- Game mode-specific mechanics (currently all modes use free build mechanics)
-- Tower defense wave system
-- Battle royale shrinking zone
-- Racing checkpoints and timers
-- Survival scoring system
-- Player statistics and leaderboards
-- Persistent player accounts
-- More NPCs and badges
-- Power-ups and special abilities
+5. **Gameplay**: Movement is validated locally and broadcast. The host runs NPC simulation (Classic Stomp) and match timers (Classic Stomp, King of the Hill). Infection spread is host-managed.
 
 ## License
 
 Free to use and modify!
-
-## Credits
-
-Created with ❤️ for fun multiplayer gaming!

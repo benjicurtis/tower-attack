@@ -6,7 +6,16 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+
+// Socket.IO needs a long-lived Node server (not compatible with Vercel Serverless).
+// If you host the static site separately (e.g. Vercel), set CORS_ORIGIN to that site URL.
+const corsOrigin = (process.env.CORS_ORIGIN || '').trim();
+const io = new Server(server, {
+  cors: {
+    origin: corsOrigin ? corsOrigin.split(',').map(s => s.trim()).filter(Boolean) : '*',
+    methods: ['GET', 'POST']
+  }
+});
 
 // Serve static files (disable implicit index.html)
 app.use(express.static(path.join(__dirname, 'public'), { index: false }));
@@ -18,6 +27,11 @@ app.get('/', (req, res) => {
 
 app.get('/game.html', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'game.html'));
+});
+
+// Simple health check for hosting platforms.
+app.get('/healthz', (req, res) => {
+  res.status(200).send('ok');
 });
 
 // Game rooms - each room has its own game state
