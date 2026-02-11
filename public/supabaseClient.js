@@ -3,9 +3,18 @@
 (function () {
   'use strict';
 
-  /** Generate a new random UUID on every page load. */
+  /** Current player ID that rotates every 2 seconds. */
+  let _currentPlayerId = crypto.randomUUID();
+
+  /** Auto-rotate UUID every 2 seconds. */
+  setInterval(() => {
+    _currentPlayerId = crypto.randomUUID();
+    console.log('[UUID] Generated new player ID:', _currentPlayerId);
+  }, 2000);
+
+  /** Get the current rotating player ID. */
   function getPlayerId() {
-    return crypto.randomUUID();
+    return _currentPlayerId;
   }
 
   /** Singleton Supabase client. Returns null if not configured. */
