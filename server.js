@@ -25,10 +25,6 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'lobby.html'));
 });
 
-app.get('/game.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'game.html'));
-});
-
 // Simple health check for hosting platforms.
 app.get('/healthz', (req, res) => {
   res.status(200).send('ok');

@@ -3,16 +3,9 @@
 (function () {
   'use strict';
 
-  const PLAYER_ID_KEY = 'tower_attack_player_id';
-
-  /** Get or create a stable browser-local player ID (UUID). */
+  /** Generate a new random UUID on every page load. */
   function getPlayerId() {
-    let id = localStorage.getItem(PLAYER_ID_KEY);
-    if (!id) {
-      id = crypto.randomUUID();
-      localStorage.setItem(PLAYER_ID_KEY, id);
-    }
-    return id;
+    return crypto.randomUUID();
   }
 
   /** Singleton Supabase client. Returns null if not configured. */
