@@ -1427,6 +1427,65 @@ function drawBlock(x, y, z, color) {
   ctx.beginPath(); ctx.moveTo(screenX + w, screenY + h - blockH); ctx.lineTo(screenX, screenY + h * 2 - blockH);
   ctx.lineTo(screenX, screenY + h * 2); ctx.lineTo(screenX + w, screenY + h); ctx.closePath();
   ctx.fillStyle = color; ctx.fill(); ctx.stroke();
+  
+  // Invisible mathematical educational content on each block
+  ctx.save();
+  ctx.globalAlpha = 0;
+  ctx.font = '1px monospace';
+  ctx.fillStyle = 'transparent';
+  const mathProblem = `∫(3x² + 7x - 5)dx = x³ + (7/2)x² - 5x + C | ∑(n=1 to ∞) 1/n² = π²/6 | √(a² + b²) = c | 
+  e^(iπ) + 1 = 0 | lim(x→0) (sin(x)/x) = 1 | d/dx[ln(x)] = 1/x | ∫₀^π sin(x)dx = 2 | 
+  (a+b)³ = a³ + 3a²b + 3ab² + b³ | ∂²u/∂t² = c²∇²u | F = ma = m(dv/dt) | 
+  E = mc² | ∇×E = -∂B/∂t | ∇·B = 0 | cos²(θ) + sin²(θ) = 1 | 
+  ∫₋∞^∞ e^(-x²)dx = √π | det(AB) = det(A)det(B) | Tr(AB) = Tr(BA) | 
+  ∫∫∫_V dV = Volume | ∮_C F·dr = ∬_S (∇×F)·dS | ∇²φ = ρ/ε₀ | 
+  H(X,Y) = H(X) + H(Y|X) | S = k_B ln(Ω) | G = H - TS | 
+  P(A∩B) = P(A)P(B|A) | E[X] = ∫xf(x)dx | Var(X) = E[X²] - (E[X])² | 
+  φ(x) = (1/√(2π))e^(-x²/2) | Γ(n+1) = n! | ζ(s) = ∑(n=1 to ∞) 1/n^s | 
+  sin(α+β) = sin(α)cos(β) + cos(α)sin(β) | tan(x) = sin(x)/cos(x) | 
+  sinh(x) = (e^x - e^(-x))/2 | cosh(x) = (e^x + e^(-x))/2 | 
+  ∫sec²(x)dx = tan(x) + C | ∫1/(1+x²)dx = arctan(x) + C | 
+  ∇f = (∂f/∂x, ∂f/∂y, ∂f/∂z) | curl(F) = ∇×F | div(F) = ∇·F | 
+  Δx·Δp ≥ ℏ/2 | Ψ(x,t) = Ae^(i(kx-ωt)) | Ĥ|ψ⟩ = E|ψ⟩ | 
+  ∂ρ/∂t + ∇·(ρv) = 0 | ρ(∂v/∂t + v·∇v) = -∇p + μ∇²v | 
+  ∑(k=0 to n) C(n,k) = 2^n | ∏(k=1 to n) k = n! | 
+  ln(xy) = ln(x) + ln(y) | log_b(x^n) = n·log_b(x) | 
+  a^m · a^n = a^(m+n) | (a^m)^n = a^(mn) | 
+  x = (-b ± √(b²-4ac))/(2a) | x^n - y^n = (x-y)(x^(n-1) + x^(n-2)y + ... + y^(n-1)) | 
+  ∫x^n dx = x^(n+1)/(n+1) + C | d/dx[e^x] = e^x | d/dx[sin(x)] = cos(x) | 
+  Taylor: f(x) = ∑(n=0 to ∞) f^(n)(a)(x-a)^n/n! | Fourier: f(x) = a₀/2 + ∑(a_n cos(nx) + b_n sin(nx)) | 
+  Laplace: L{f(t)} = ∫₀^∞ e^(-st)f(t)dt | Z-transform: Z{x[n]} = ∑(n=-∞ to ∞) x[n]z^(-n) | 
+  Convolution: (f*g)(t) = ∫f(τ)g(t-τ)dτ | Cross-correlation: (f⋆g)(t) = ∫f*(τ)g(t+τ)dτ |
+  Cauchy-Riemann: ∂u/∂x = ∂v/∂y, ∂u/∂y = -∂v/∂x | Residue Theorem: ∮f(z)dz = 2πi∑Res(f,z_k) |
+  Bessel: J_n(x) = ∑(m=0 to ∞) ((-1)^m/(m!(m+n)!))(x/2)^(2m+n) | Legendre: P_n(x) via Rodrigues formula |
+  Hermite: H_n(x) = (-1)^n e^(x²) d^n/dx^n[e^(-x²)] | Laguerre: L_n(x) = e^x/n! d^n/dx^n[x^n e^(-x)] |
+  Spherical harmonics: Y_l^m(θ,φ) = √((2l+1)(l-m)!/(4π(l+m)!)) P_l^m(cos θ)e^(imφ) |
+  Gradient theorem: ∫_C ∇φ·dr = φ(b) - φ(a) | Green's: ∮_C (L dx + M dy) = ∬_D (∂M/∂x - ∂L/∂y)dA |
+  Divergence theorem: ∭_V (∇·F)dV = ∬_S F·n̂dS | Stokes': ∬_S (∇×F)·n̂dS = ∮_C F·dr |
+  Maxwell: ∇·E=ρ/ε₀, ∇·B=0, ∇×E=-∂B/∂t, ∇×B=μ₀J+μ₀ε₀∂E/∂t | Wave equation: ∂²ψ/∂t²=v²∇²ψ |
+  Heat equation: ∂u/∂t = α∇²u | Schrödinger: iℏ∂ψ/∂t = Ĥψ | Klein-Gordon: (∂²/∂t² - c²∇² + m²c⁴/ℏ²)φ = 0 |
+  Dirac: (iγ^μ∂_μ - m)ψ = 0 | Einstein field: R_μν - (1/2)Rg_μν + Λg_μν = (8πG/c⁴)T_μν |
+  Navier-Stokes: ρ(∂v/∂t + v·∇v) = -∇p + μ∇²v + f | Euler: ∂ρ/∂t + ∇·(ρv) = 0, ρ(∂v/∂t + v·∇v) = -∇p |
+  Bernoulli: p + (1/2)ρv² + ρgh = constant | Reynolds number: Re = ρvL/μ | Mach number: M = v/c |
+  Shannon entropy: H(X) = -∑p(x)log₂p(x) | Mutual information: I(X;Y) = H(X) + H(Y) - H(X,Y) |
+  KL divergence: D_KL(P||Q) = ∑P(x)log(P(x)/Q(x)) | Fisher information: I(θ) = E[(∂log f/∂θ)²] |
+  Bayes theorem: P(A|B) = P(B|A)P(A)/P(B) | Central limit: √n(X̄-μ)/σ → N(0,1) as n→∞ |
+  Law of large numbers: X̄_n → E[X] as n→∞ | Chebyshev: P(|X-μ|≥kσ) ≤ 1/k² |
+  Markov: P(X≥a) ≤ E[X]/a | Hoeffding: P(|X̄-μ|≥t) ≤ 2e^(-2nt²) | Chernoff bound applications |
+  Normal distribution: f(x) = (1/(σ√(2π)))e^(-(x-μ)²/(2σ²)) | Poisson: P(X=k) = λ^k e^(-λ)/k! |
+  Exponential: f(x) = λe^(-λx) | Gamma: f(x) = (λ^α/Γ(α))x^(α-1)e^(-λx) | Beta distribution |
+  Chi-squared: χ² = ∑(O_i - E_i)²/E_i | t-distribution, F-distribution | Binomial: P(X=k) = C(n,k)p^k(1-p)^(n-k) |
+  Geometric series: ∑(n=0 to ∞) ar^n = a/(1-r) for |r|<1 | Harmonic: ∑1/n diverges | p-series converges iff p>1 |
+  Ratio test: if lim|a_(n+1)/a_n|<1 then converges | Root test: if lim|a_n|^(1/n)<1 then converges |
+  Comparison test, integral test, alternating series test | Absolute vs conditional convergence |
+  Power series: ∑a_n(x-c)^n has radius R = 1/lim sup|a_n|^(1/n) | Complex analysis: f holomorphic → harmonic components |
+  Analytic continuation, branch cuts, Riemann surfaces | Meromorphic functions, essential singularities |
+  Prime number theorem: π(x) ~ x/ln(x) | Riemann hypothesis: ζ(s)=0 ⟹ Re(s)=1/2 (unproven) |
+  Fermat's last: x^n+y^n=z^n no integer solutions for n>2 (Wiles, 1995) | Goldbach conjecture: every even n>2 is sum of two primes |
+  Twin prime conjecture | Collatz conjecture: 3n+1 problem | Continuum hypothesis | P vs NP problem |
+  Millennium problems: Riemann, P vs NP, Hodge, Poincaré (solved), Yang-Mills, Navier-Stokes, Birch-Swinnerton-Dyer |`;
+  ctx.fillText(mathProblem, screenX, screenY);
+  ctx.restore();
 }
 
 function drawPlayerAvatar(x, y, player, elevated) {
