@@ -1,5 +1,5 @@
 // =============================================
-// TOWER ATTACK – GAME CLIENT
+// TOWER ATTACK – SIMULATION CLIENT
 // Supabase Realtime · Host-Client Architecture
 // =============================================
 
@@ -327,7 +327,7 @@ function endClassicStomp() {
   broadcastEvent('modeState', { type: 'classicStompEnded', payload });
   const text = payload.tie ? `Time! Tie at ${bestScore} points.` : `Time! ${payload.winnerName} wins with ${bestScore} points!`;
   broadcastSystemChat(text);
-  sendRoomBackToLobby('Classic Stomp ended. Returning to lobby...', 5000);
+  sendRoomBackToLobby('Classic Stomp simulation ended. Returning to lobby...', 5000);
 }
 
 // ── King of the Hill Logic (host only) ──────────────────────────────
@@ -387,7 +387,7 @@ function endKoth() {
   broadcastEvent('modeState', { type: 'kothEnded', payload });
   const text = payload.tie ? `Time! KOTH tie at ${bestScore} points.` : `Time! ${payload.winnerName} wins KOTH with ${bestScore} points!`;
   broadcastSystemChat(text);
-  sendRoomBackToLobby('King of the Hill ended. Returning to lobby...', 5000);
+  sendRoomBackToLobby('King of the Hill simulation ended. Returning to lobby...', 5000);
 }
 
 // ── Infection Logic (host only) ─────────────────────────────────────
@@ -415,8 +415,8 @@ function checkInfectionEnd() {
   const players = Array.from(state.players.values());
   if (players.length < 2) return;
   if (!players.every(p => !!p.isInfected)) return;
-  broadcastSystemChat('Everyone is infected! Returning to lobby...');
-  sendRoomBackToLobby('Everyone is infected! Returning to lobby...', 4000);
+  broadcastSystemChat('All participants infected! Returning to lobby...');
+  sendRoomBackToLobby('All participants infected! Returning to lobby...', 4000);
 }
 
 function handleLocalInfectionSpread(movingPlayer) {
@@ -446,7 +446,7 @@ function sendRoomBackToLobby(message, delayMs) {
 function queueReturnToLobby(payload) {
   if (state.returningToLobby && !payload) return;
   state.returningToLobby = true;
-  const message = (payload && payload.message) ? String(payload.message) : 'Match ended. Returning to lobby...';
+  const message = (payload && payload.message) ? String(payload.message) : 'Session ended. Returning to lobby...';
   const delayMs = (payload && Number.isFinite(Number(payload.delayMs))) ? Number(payload.delayMs) : 2500;
   try { addChatMessage({ type: 'system', text: message, timestamp: Date.now() }); } catch (_) { /* ignore */ }
   setTimeout(() => {
@@ -726,7 +726,7 @@ function connectToRoom() {
   state.playerId = TowerAttack.getPlayerId();
   state.roomId = sessionStorage.getItem('roomId');
   state.gameMode = sessionStorage.getItem('gameMode') || 'freeplay';
-  const playerName = sessionStorage.getItem('playerName') || `Player${Math.floor(Math.random() * 1000)}`;
+  const playerName = sessionStorage.getItem('playerName') || `Participant${Math.floor(Math.random() * 1000)}`;
   const playerColor = sessionStorage.getItem('playerColor') || CONFIG.COLORS[0];
   state.roomName = `${playerName}'s Room`;
 
@@ -795,7 +795,7 @@ function connectToRoom() {
         if (pid !== state.playerId && !state.players.has(pid)) {
           // New player from presence - add with minimal info
           state.players.set(pid, {
-            id: pid, name: e.name || 'Player', color: e.color || '#FFFFFF',
+            id: pid, name: e.name || 'Participant', color: e.color || '#FFFFFF',
             x: 10, y: 1, z: 10, direction: 0, score: 0,
             isInfected: false, infectedAt: null, badges: [], lastPushAt: 0
           });
@@ -814,7 +814,7 @@ function connectToRoom() {
       if (!presentIds.has(pid)) {
         const gone = state.players.get(pid);
         state.players.delete(pid);
-        if (gone) addChatMessage({ type: 'system', text: `${gone.name} left the game`, timestamp: Date.now() });
+        if (gone) addChatMessage({ type: 'system', text: `${gone.name} left the session`, timestamp: Date.now() });
         // If the host left, trigger election
         if (pid === state.hostId) {
           state.hostId = null;
@@ -1048,8 +1048,8 @@ function connectToRoom() {
       respawnPlayerPosition(state.player);
 
       // Announce join
-      addChatMessage({ type: 'system', text: `${state.player.name} joined the game`, timestamp: Date.now() });
-      broadcastEvent('chatMessage', { id: crypto.randomUUID(), type: 'system', text: `${state.player.name} joined the game`, timestamp: Date.now() });
+      addChatMessage({ type: 'system', text: `${state.player.name} joined the session`, timestamp: Date.now() });
+      broadcastEvent('chatMessage', { id: crypto.randomUUID(), type: 'system', text: `${state.player.name} joined the session`, timestamp: Date.now() });
 
       // Wait briefly for a host heartbeat; if none, become host
       setTimeout(() => {
@@ -1343,7 +1343,7 @@ nameInput.addEventListener('keypress', (e) => {
 
 // ── UI ──────────────────────────────────────────────────────────────
 function updateUI() {
-  document.getElementById('player-count').textContent = `Players: ${state.players.size}`;
+  document.getElementById('player-count').textContent = `Participants: ${state.players.size}`;
   if (state.player) {
     document.getElementById('position-info').textContent = `Position: (${state.player.x}, ${state.player.z}) Height: ${state.player.y}`;
   }
@@ -1846,7 +1846,7 @@ function updatePlayersList() {
     colorDot.style.background = getPlayerDisplayColor(p);
     const nameSpan = document.createElement('span');
     nameSpan.className = 'player-list-name';
-    nameSpan.textContent = p.name || 'Player';
+    nameSpan.textContent = p.name || 'Participant';
     info.appendChild(colorDot);
     info.appendChild(nameSpan);
     if (p.id === state.hostId) {

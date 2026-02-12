@@ -3,13 +3,33 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tower Attack - Game</title>
+  <title>Tower Attack - Simulation</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div id="app">
-    <div id="game-container">
-      <canvas id="game-canvas"></canvas>
+    <!-- Top Content Drawer -->
+    <div class="content-drawer top-drawer" id="top-drawer">
+      <div class="drawer-handle" id="top-drawer-handle">
+        <span class="drawer-label">Technical Overview</span>
+        <span class="drawer-toggle">▼</span>
+      </div>
+      <div class="drawer-content" id="top-drawer-content">
+        <h2>Multi-User Interactive Isometric Environments</h2>
+        
+        <p>Interactive isometric environments enable simultaneous spatial manipulation and observation by multiple participants. The underlying architecture employs client-server synchronization to maintain a consistent shared state across distributed systems. Each client renders the isometric projection locally while transmitting transformation operations to a central authority server that validates and broadcasts state changes to all connected participants.</p>
+        
+        <p>The coordinate system implements a discrete voxel grid where each unit represents a cubic volume in world space. Isometric transformation matrices convert these three-dimensional coordinates into screen-space positions for rendering. The grid structure facilitates efficient collision detection through spatial hashing algorithms, enabling rapid queries to determine occupancy and adjacency relationships between voxels.</p>
+        
+        <p>Entity representation employs a component-based architecture where autonomous agents possess behavior trees governing movement patterns and interaction logic. Pathfinding algorithms utilize the A* search algorithm adapted to the discrete grid topology, computing optimal traversal routes while avoiding obstacles and respecting elevation constraints. Navigation meshes generated from the voxel grid provide efficient spatial queries for agent locomotion.</p>
+        
+        <p>Input handling translates screen-space interactions into world-space operations through inverse isometric projection. Ray-casting techniques determine the precise grid coordinates targeted by cursor position, accounting for elevation and occlusion. The system supports additive and subtractive operations on the voxel grid, with validation logic preventing invalid configurations and maintaining structural integrity constraints.</p>
+      </div>
+    </div>
+
+    <div class="main-content-area">
+      <div id="game-container">
+        <canvas id="game-canvas"></canvas>
 
       <div id="controls-overlay">
         <div class="control-hint">
@@ -22,23 +42,23 @@
         </div>
       </div>
       <div id="player-info">
-        <div id="player-count">Players: 0</div>
+        <div id="player-count">Participants: 0</div>
         <div id="position-info">Position: (0, 0)</div>
         <div id="game-mode-info">Mode: Loading...</div>
         <div id="classic-stomp-hud" style="display:none;">Score: 0 | Time: --:--</div>
         <div id="koth-hud" style="display:none;">Score: 0 | Time: --:-- | Hill: --</div>
       </div>
-      <button id="leave-room-btn" class="leave-btn">Leave Room</button>
-      <button id="players-btn" class="players-btn" style="display:none;">Players</button>
+      <button id="leave-room-btn" class="leave-btn">Leave Session</button>
+      <button id="players-btn" class="players-btn" style="display:none;">Participants</button>
       <div id="players-panel" class="players-panel" style="display:none;">
         <div class="players-panel-header">
-          <h3>Players</h3>
+          <h3>Participants</h3>
           <button id="players-panel-close" class="players-panel-close">&times;</button>
         </div>
         <div id="players-list" class="players-list"></div>
       </div>
-    </div>
-    <div id="chat-container">
+      </div>
+      <div id="chat-container">
       <div id="chat-header">
         <h2>Chat</h2>
         <div id="name-section">
@@ -51,8 +71,45 @@
         <input type="text" id="chat-input" placeholder="Type a message..." maxlength="500">
         <button id="send-btn">Send</button>
       </div>
+      </div>
+    </div>
+
+    <!-- Bottom Content Drawer -->
+    <div class="content-drawer bottom-drawer" id="bottom-drawer">
+      <div class="drawer-handle" id="bottom-drawer-handle">
+        <span class="drawer-toggle">▲</span>
+        <span class="drawer-label">Implementation Architecture</span>
+      </div>
+      <div class="drawer-content" id="bottom-drawer-content">
+        <h2>WebSocket Protocol and State Synchronization</h2>
+        
+        <p>The networking layer utilizes WebSocket connections to establish persistent bidirectional communication channels between clients and the simulation server. Message serialization employs JSON encoding for state updates, with delta compression minimizing bandwidth requirements by transmitting only changed properties rather than complete entity snapshots. Protocol buffers or MessagePack could provide more efficient binary serialization for production deployments requiring reduced latency and bandwidth utilization.</p>
+        
+        <p>Temporal synchronization addresses the inherent latency in network communication through predictive algorithms and reconciliation strategies. Client-side prediction immediately applies local operations to the rendered state, providing responsive feedback to user input. When authoritative server updates arrive, the client performs reconciliation by comparing predicted state with server state, applying corrections only when discrepancies exceed defined tolerance thresholds. This approach balances responsiveness with consistency, minimizing perceptible artifacts from network delay.</p>
+        
+        <p>Entity interpolation smooths the visual presentation of remote participants and autonomous agents by computing intermediate positions between discrete network updates. Linear interpolation provides adequate results for constant-velocity motion, while cubic spline interpolation produces smoother trajectories for entities exhibiting acceleration. The interpolation buffer maintains a small temporal offset, ensuring sufficient data points exist to compute smooth motion paths even when network latency fluctuates.</p>
+        
+        <p>Load distribution and scalability considerations influence architectural decisions for systems supporting substantial concurrent participation. Horizontal scaling partitions the simulation space across multiple server instances, with each instance managing a distinct spatial region. Dynamic load balancing migrates regions between servers based on participant density and computational load. Distributed state stores or message brokers coordinate cross-region interactions when participants near region boundaries, maintaining consistency across the partitioned architecture.</p>
+      </div>
     </div>
   </div>
+  <script>
+    // Drawer toggle functionality
+    document.addEventListener('DOMContentLoaded', () => {
+      const topDrawerHandle = document.getElementById('top-drawer-handle');
+      const topDrawer = document.getElementById('top-drawer');
+      const bottomDrawerHandle = document.getElementById('bottom-drawer-handle');
+      const bottomDrawer = document.getElementById('bottom-drawer');
+
+      topDrawerHandle.addEventListener('click', () => {
+        topDrawer.classList.toggle('open');
+      });
+
+      bottomDrawerHandle.addEventListener('click', () => {
+        bottomDrawer.classList.toggle('open');
+      });
+    });
+  </script>
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabaseClient.js"></script>

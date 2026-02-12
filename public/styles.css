@@ -13,8 +13,122 @@ body {
 
 #app {
   display: flex;
+  flex-direction: column;
   height: 100vh;
   width: 100vw;
+}
+
+/* Content Drawers */
+.content-drawer {
+  background: rgba(15, 15, 35, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+}
+
+.top-drawer {
+  border-bottom: 2px solid rgba(102, 126, 234, 0.3);
+}
+
+.bottom-drawer {
+  border-top: 2px solid rgba(102, 126, 234, 0.3);
+}
+
+.drawer-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 20px;
+  cursor: pointer;
+  background: rgba(0, 0, 0, 0.4);
+  transition: background 0.2s;
+  user-select: none;
+  gap: 12px;
+}
+
+.drawer-handle:hover {
+  background: rgba(102, 126, 234, 0.2);
+}
+
+.drawer-label {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.drawer-toggle {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  transition: transform 0.3s ease;
+}
+
+.drawer-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+  padding: 0 40px;
+}
+
+.content-drawer.open .drawer-content {
+  max-height: 500px;
+  overflow-y: auto;
+  padding: 30px 40px;
+}
+
+.content-drawer.open .top-drawer .drawer-toggle {
+  transform: rotate(180deg);
+}
+
+.content-drawer.open .bottom-drawer .drawer-toggle {
+  transform: rotate(180deg);
+}
+
+.drawer-content h2 {
+  color: #fff;
+  font-size: 20px;
+  margin-bottom: 20px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.drawer-content p {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 14px;
+  line-height: 1.7;
+  margin-bottom: 16px;
+  text-align: justify;
+}
+
+.drawer-content p:last-child {
+  margin-bottom: 0;
+}
+
+.drawer-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.drawer-content::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.drawer-content::-webkit-scrollbar-thumb {
+  background: rgba(102, 126, 234, 0.4);
+  border-radius: 3px;
+}
+
+.drawer-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(102, 126, 234, 0.6);
+}
+
+/* Main Content Area (game + chat side by side) */
+.main-content-area {
+  display: flex;
+  flex: 1;
+  min-height: 0;
 }
 
 /* Game Container */
@@ -23,12 +137,18 @@ body {
   position: relative;
   background: linear-gradient(180deg, #0f0f23 0%, #1a1a3e 100%);
   overflow: hidden;
+  display: flex;
+  min-width: 0;
 }
 
 #game-canvas {
+  flex: 1;
+  display: block;
+}
+
+#game-container > canvas {
   width: 100%;
   height: 100%;
-  display: block;
 }
 
 #controls-overlay {
@@ -541,7 +661,7 @@ body {
 
 /* Responsive */
 @media (max-width: 768px) {
-  #app {
+  .main-content-area {
     flex-direction: column;
   }
   
@@ -552,6 +672,23 @@ body {
   #chat-container {
     width: 100%;
     height: 40vh;
+  }
+
+  .drawer-content {
+    padding: 0 20px;
+  }
+
+  .content-drawer.open .drawer-content {
+    padding: 20px;
+    max-height: 400px;
+  }
+
+  .drawer-content h2 {
+    font-size: 16px;
+  }
+
+  .drawer-content p {
+    font-size: 13px;
   }
   
   .control-hint {

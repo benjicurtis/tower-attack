@@ -38,7 +38,7 @@ const GAME_MODES = {
   'freeplay': { name: 'Free Build', icon: '\u{1F3D7}\uFE0F', description: 'Build freely and explore. No NPCs.', tag: 'Casual' },
   'classic-stomp': { name: 'Classic Stomp', icon: '\u{1F45F}', description: 'NPCs enabled. Stomp them from above!', tag: 'Action' },
   'king-of-the-hill': { name: 'King of the Hill', icon: '\u{1F451}', description: 'Hold the hill to earn points. Most points wins.', tag: 'Competitive' },
-  'infection': { name: 'Infection', icon: '\u{1F9A0}', description: 'One player starts infected. Touch a carrier to spread it.', tag: 'Infection' }
+  'infection': { name: 'Infection', icon: '\u{1F9A0}', description: 'One participant starts infected. Touch a carrier to spread it.', tag: 'Infection' }
 };
 
 // State
@@ -211,7 +211,7 @@ function setupEventListeners() {
   }
 
   if (!nameInput.value) {
-    nameInput.value = `Player${Math.floor(Math.random() * 1000)}`;
+    nameInput.value = `Participant${Math.floor(Math.random() * 1000)}`;
     state.playerName = nameInput.value;
   }
 }
@@ -262,7 +262,7 @@ function createRoom() {
     state.selectedMode ||
     (document.querySelector('.game-mode-card.selected') && document.querySelector('.game-mode-card.selected').dataset.mode);
 
-  if (!selectedMode) { alert('Please select a game mode!'); return; }
+  if (!selectedMode) { alert('Please select a simulation mode!'); return; }
 
   const playerName = state.playerName || document.getElementById('player-name').value.trim();
   if (!playerName) { alert('Please enter your name!'); document.getElementById('player-name').focus(); return; }
@@ -283,7 +283,7 @@ function quickJoinRoom() {
     state.selectedMode ||
     (document.querySelector('.game-mode-card.selected') && document.querySelector('.game-mode-card.selected').dataset.mode);
 
-  if (!selectedMode) { alert('Please select a game mode!'); return; }
+  if (!selectedMode) { alert('Please select a simulation mode!'); return; }
 
   const playerName = state.playerName || document.getElementById('player-name').value.trim();
   if (!playerName) { alert('Please enter your name!'); document.getElementById('player-name').focus(); return; }
@@ -321,7 +321,7 @@ function updateRoomsList() {
   const roomsList = document.getElementById('rooms-list');
 
   if (state.rooms.length === 0) {
-    roomsList.innerHTML = '<div class="no-rooms">No active rooms. Create one by selecting a game mode!</div>';
+    roomsList.innerHTML = '<div class="no-rooms">No active sessions. Create one by selecting a simulation mode!</div>';
     return;
   }
 
@@ -337,8 +337,8 @@ function updateRoomsList() {
         <div class="room-name">${modeInfo.icon} ${escapeHtml(room.name)}</div>
         <div class="room-mode">${modeInfo.name}</div>
       </div>
-      <div class="room-players">\u{1F465} ${room.playerCount}/${room.maxPlayers} players</div>
-      <button class="join-room-btn">Join Room</button>
+      <div class="room-players">\u{1F465} ${room.playerCount}/${room.maxPlayers} participants</div>
+      <button class="join-room-btn">Join Session</button>
     `;
 
     roomCard.querySelector('.join-room-btn').addEventListener('click', () => joinRoom(room.id));
@@ -356,7 +356,7 @@ function updatePlayerCounts() {
     const mode = card.dataset.mode;
     const count = modeCounts[mode] || 0;
     const countElement = card.querySelector('.player-count');
-    countElement.textContent = `${count} player${count !== 1 ? 's' : ''}`;
+    countElement.textContent = `${count} participant${count !== 1 ? 's' : ''}`;
   });
 }
 
