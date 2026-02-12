@@ -10,7 +10,7 @@
   <div id="lobby-container">
     <div class="lobby-header">
       <h1 class="game-title">🏰 Tower Attack</h1>
-      <p class="game-subtitle">Pick a name, pick a color, and play.</p>
+      <p class="game-subtitle">Pick a name, pick a color, and join the experience.</p>
     </div>
 
     <!-- Isometric Rendering Content -->
@@ -67,9 +67,9 @@
       </div>
     </div>
 
-    <!-- Game Mode Section -->
+    <!-- Simulation Mode Section -->
     <div class="game-modes-section">
-      <h2>Game Mode</h2>
+      <h2>Simulation Mode</h2>
       <div class="game-modes-grid">
         
         <!-- Free Build Mode -->
@@ -78,8 +78,8 @@
           <h3>Free Build</h3>
           <p>Build freely and explore. No NPCs.</p>
           <div class="mode-stats">
-            <span class="player-count">0 players</span>
-            <span class="mode-tag tag-casual">Casual</span>
+            <span class="player-count">0 participants</span>
+            <span class="mode-tag tag-casual">Exploratory</span>
           </div>
         </div>
 
@@ -89,8 +89,8 @@
           <h3>Classic Stomp</h3>
           <p>NPCs enabled. Stomp them from above!</p>
           <div class="mode-stats">
-            <span class="player-count">0 players</span>
-            <span class="mode-tag tag-action">Action</span>
+            <span class="player-count">0 participants</span>
+            <span class="mode-tag tag-action">Interactive</span>
           </div>
         </div>
 
@@ -100,8 +100,8 @@
           <h3>King of the Hill</h3>
           <p>Hold the hill to earn points. Most points wins.</p>
           <div class="mode-stats">
-            <span class="player-count">0 players</span>
-            <span class="mode-tag tag-competitive">Competitive</span>
+            <span class="player-count">0 participants</span>
+            <span class="mode-tag tag-competitive">Objective-Based</span>
           </div>
         </div>
 
@@ -109,9 +109,9 @@
         <div class="game-mode-card" data-mode="infection">
           <div class="mode-icon">🦠</div>
           <h3>Infection</h3>
-          <p>One player starts infected. Touch a carrier to spread it.</p>
+          <p>One participant starts infected. Touch a carrier to spread it.</p>
           <div class="mode-stats">
-            <span class="player-count">0 players</span>
+            <span class="player-count">0 participants</span>
             <span class="mode-tag tag-infection">Infection</span>
           </div>
         </div>
@@ -121,9 +121,9 @@
 
     <!-- Active Rooms Section -->
     <div class="rooms-section">
-      <h2>Active Rooms</h2>
+      <h2>Active Sessions</h2>
       <div class="rooms-list" id="rooms-list">
-        <div class="no-rooms">No active rooms. Create one to start playing!</div>
+        <div class="no-rooms">No active sessions. Create one to begin!</div>
       </div>
     </div>
 
@@ -137,7 +137,7 @@
 
         <div class="selected-mode-controls" id="selected-mode-controls" style="display:none;">
           <div class="weapon-row" id="stomp-duration-row" style="display:none;">
-            <label for="stomp-duration-select">Match length</label>
+            <label for="stomp-duration-select">Session length</label>
             <select id="stomp-duration-select">
               <option value="1">1 min</option>
               <option value="2">2 min</option>
@@ -148,7 +148,7 @@
           </div>
 
           <div class="weapon-row" id="koth-duration-row" style="display:none;">
-            <label for="koth-duration-select">Match length</label>
+            <label for="koth-duration-select">Session length</label>
             <select id="koth-duration-select">
               <option value="1">1 min</option>
               <option value="2">2 min</option>
@@ -160,11 +160,32 @@
         </div>
 
         <div class="action-buttons">
-          <button class="btn btn-primary" id="create-room-btn">Create Room</button>
+          <button class="btn btn-primary" id="create-room-btn">Create Session</button>
           <button class="btn btn-secondary" id="quick-join-btn">Quick Join</button>
           <button class="btn btn-cancel" id="cancel-btn">Cancel</button>
         </div>
       </div>
+    </div>
+
+    <!-- Real-Time Collaborative Rendering Content -->
+    <div class="isometric-content-section">
+      <h2>Real-Time Collaborative Rendering and Network Synchronization</h2>
+      
+      <p>Real-time collaborative rendering systems enable multiple users to interact with shared virtual environments simultaneously, presenting unique technical challenges in synchronization, latency management, and state consistency. These systems form the backbone of collaborative design tools, architectural walkthroughs, training simulations, and multi-user visualization platforms. The architecture must balance responsiveness with accuracy, ensuring that each participant perceives a coherent shared state while minimizing the impact of network delays and bandwidth constraints.</p>
+      
+      <p>Client-server architectures dominate real-time collaborative rendering implementations due to their centralized authority model. The server maintains the authoritative state of the virtual environment, processing input from all connected clients and broadcasting state updates. This approach simplifies conflict resolution when multiple users attempt to modify the same objects or occupy the same space. However, the round-trip time between client input and server acknowledgment introduces perceptible latency. Client-side prediction techniques mitigate this by immediately applying local user inputs to the client's view while awaiting server confirmation, rolling back only if the server's authoritative state differs.</p>
+      
+      <p>State synchronization protocols must efficiently transmit updates across potentially limited network connections. Delta compression reduces bandwidth by transmitting only the differences between consecutive states rather than complete snapshots. Interpolation smooths the appearance of remote entities by estimating intermediate positions between received updates, while extrapolation predicts future positions based on velocity vectors. Dead reckoning algorithms extend extrapolation by maintaining simplified physics models on each client, allowing entities to continue moving predictably even during temporary network disruptions.</p>
+      
+      <p>The entity-component-system (ECS) architecture pattern provides an effective organizational structure for collaborative rendering applications. Entities represent objects in the virtual environment, components store their attributes (position, appearance, physics properties), and systems process specific aspects of behavior (rendering, collision, networking). This separation enables selective synchronization where only components that frequently change, such as transform components, are transmitted over the network, while static components like mesh data are loaded once during initialization.</p>
+      
+      <p>WebSocket protocols and WebRTC data channels facilitate low-latency bidirectional communication between browsers and servers or between peer clients. WebSockets provide a reliable, ordered stream suitable for critical state updates and command transmission. WebRTC data channels offer both reliable and unreliable transport modes, where unreliable channels sacrifice guaranteed delivery for reduced latency, appropriate for frequently updated position data where newer information supersedes older packets. Modern implementations often employ hybrid approaches, using reliable channels for important events while streaming position updates over unreliable channels.</p>
+      
+      <p>Optimistic concurrency control allows clients to modify shared state immediately without waiting for server permission, improving perceived responsiveness. When conflicts arise—such as two users attempting to place objects in the same location—the server resolves them according to predetermined rules, typically favoring the first modification received. Operational transformation algorithms enable sophisticated conflict resolution for collaborative editing scenarios, transforming concurrent operations to ensure consistency regardless of the order in which they are received and applied across different clients.</p>
+      
+      <p>Interest management techniques optimize bandwidth and processing resources by limiting the information each client receives to relevant portions of the environment. Spatial partitioning divides the virtual world into regions, with clients subscribing only to updates from their current region and immediate neighbors. Area-of-interest filtering further refines this by considering view frustums, object importance, and user attention, transmitting detailed updates for nearby, visible objects while providing reduced-frequency updates for distant or occluded entities.</p>
+      
+      <p>Scalability considerations drive architectural decisions in systems supporting large numbers of concurrent users. Horizontal scaling distributes load across multiple server instances, with each instance managing a subset of the virtual environment or a group of clients. Load balancers direct incoming connections to appropriate servers based on current capacity and geographic proximity. Distributed state management through shared databases or message queues enables servers to coordinate when users transition between regions managed by different instances. Performance monitoring systems track metrics such as tick rate, packet loss, and round-trip time, providing operational insight essential for maintaining quality of experience across diverse network conditions.</p>
     </div>
   </div>
 
