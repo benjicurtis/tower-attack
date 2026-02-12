@@ -39,6 +39,36 @@ body {
   font-weight: 300;
 }
 
+/* Isometric Content Section */
+.isometric-content-section {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 35px 40px;
+  border-radius: 20px;
+  margin-bottom: 40px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  animation: fadeIn 0.6s ease 0.15s backwards;
+}
+
+.isometric-content-section h2 {
+  font-size: 28px;
+  color: #333;
+  margin-bottom: 25px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.isometric-content-section p {
+  font-size: 15px;
+  color: #444;
+  line-height: 1.8;
+  margin-bottom: 18px;
+  text-align: justify;
+}
+
+.isometric-content-section p:last-child {
+  margin-bottom: 0;
+}
+
 /* Player Setup */
 .player-setup {
   background: rgba(255, 255, 255, 0.95);

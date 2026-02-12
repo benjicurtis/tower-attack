@@ -13,6 +13,27 @@
       <p class="game-subtitle">Pick a name, pick a color, and play.</p>
     </div>
 
+    <!-- Isometric Rendering Content -->
+    <div class="isometric-content-section">
+      <h2>Understanding Isometric Graphic Rendering</h2>
+      
+      <p>Isometric projection represents a powerful technique in computer graphics for visualizing three-dimensional objects and environments on two-dimensional displays. Unlike perspective projection, which mimics how the human eye perceives depth with vanishing points, isometric projection maintains parallel lines and consistent scaling regardless of distance from the viewer. This approach creates a distinctive visual style that has proven invaluable across architectural visualization, technical illustration, simulation software, and interactive media.</p>
+      
+      <p>The mathematical foundation of isometric rendering relies on a specific transformation matrix that rotates the standard Cartesian coordinate system. In true isometric projection, the three axes (x, y, and z) are equally foreshortened and separated by 120-degree angles when projected onto the viewing plane. The transformation typically involves rotating the coordinate system 45 degrees around the vertical axis, followed by approximately 35.264 degrees (arctan(1/√2)) around the horizontal axis. This produces the characteristic diamond-shaped grid where vertical lines remain vertical, while the x and z axes project at 30 degrees from horizontal.</p>
+      
+      <p>Implementing isometric graphics requires careful consideration of coordinate transformation. A point in 3D space (x, y, z) is mapped to screen coordinates using the transformation equations: screen_x = (x - z) × cos(30°) and screen_y = (x + z) × sin(30°) - y. These calculations must account for the scale factor, typically multiplied by the desired tile or grid size in pixels. The y-coordinate, representing height or elevation, directly affects the vertical screen position, allowing for natural representation of stacked objects and terrain elevation.</p>
+      
+      <p>Depth sorting presents one of the primary technical challenges in isometric rendering systems. Since objects farther from the viewer must be drawn before closer objects to achieve proper occlusion, rendering engines must implement sophisticated sorting algorithms. The painter's algorithm, which sorts objects by their depth coordinates before rendering, provides a foundational approach. However, complex scenes with overlapping objects require more advanced techniques such as binary space partitioning (BSP) trees or scanline algorithms that can handle cases where simple depth sorting fails.</p>
+      
+      <p>Modern rendering frameworks provide robust support for isometric graphics through specialized libraries and engines. Phaser, a popular 2D framework, includes built-in isometric plugins that handle coordinate transformation and rendering order automatically. The PixiJS library offers flexible sprite rendering with custom projection matrices, making it suitable for implementing custom isometric systems. Three.js, while primarily designed for 3D graphics, can be configured with an orthographic camera to achieve isometric projection, providing access to WebGL acceleration and advanced lighting effects.</p>
+      
+      <p>Tile-based isometric engines offer particular advantages for applications requiring structured environments. These systems organize content into a grid of tiles, where each tile corresponds to a discrete unit in the logical space. Libraries such as Tiled Map Editor provide visual tools for designing isometric layouts, which can then be loaded and rendered using compatible frameworks. This approach simplifies collision detection, pathfinding, and spatial queries by maintaining a clear relationship between screen coordinates and logical grid positions.</p>
+      
+      <p>Performance optimization in isometric rendering focuses on minimizing overdraw and efficiently managing scene complexity. Techniques such as frustum culling eliminate objects outside the visible area, while chunk-based loading systems divide large environments into manageable sections. Sprite atlasing reduces texture switching overhead by combining multiple graphical elements into single textures. For dynamic scenes with many moving objects, spatial indexing structures like quadtrees enable rapid queries to determine which objects need updating or rendering each frame.</p>
+      
+      <p>The mathematical precision of isometric projection extends beyond basic coordinate transformation to encompass lighting models, shadow calculation, and interaction handling. Ambient occlusion can be pre-calculated for static geometry to enhance depth perception, while dynamic shadows require ray-casting algorithms adapted to the isometric coordinate system. Input handling must convert screen-space mouse coordinates back to world-space positions through inverse transformation, enabling users to interact naturally with the rendered environment. These components combine to create cohesive isometric applications that balance visual clarity with technical performance.</p>
+    </div>
+
     <!-- Player Info Section -->
     <div class="player-setup">
       <div class="player-name-section">
